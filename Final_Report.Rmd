@@ -1,0 +1,52 @@
+---
+title: "Final Report"
+author: "Don Francisco"
+date: "April 11, 2025"
+bibliography: references.bib
+csl: ecology.csl
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Delete this placeholder text, and replace it with your introduction text.
+
+# Methods
+
+Add text here.
+
+## Site Locations and Descriptions
+
+Add text here.
+
+## Field Sampling Design
+
+Add text here.
+
+## Data Analysis and Visualization
+
+Add text here.
+
+# Results
+
+## Subsections are ok in the results section too
+
+Add a number of code chunks in the Results section. These should read in, subset and plot the data as needed (no need to save any figures to pdf, since they will be put into the rendered document when you click 'knit'), and, for any hypotheses that you want to test, an appropriate statistical test. 
+
+```{r load-packages}
+# If you add any additional packages here, make sure they are
+# also listed in the DESCRIPTION file
+library("dplyr")
+library("tidyr")
+library("ggplot2")
+library("readr")
+```
+
+# Discussion
+
+# Sources Cited
+

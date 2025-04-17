@@ -1,0 +1,3 @@
+Package: compendium
+Version: 0.1.0
+Depends: tidyr, dplyr, rmarkdown, knitr, ggplot2, readr, ggmap, tidyverse, ggthemes, broom, RColorBrewer, magrittr, neonUtilities, testthat
