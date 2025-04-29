@@ -1,6 +1,6 @@
 ---
 title: "Final Report"
-author: "Don Francisco"
+author: "Sergio O."
 date: "April 11, 2025"
 bibliography: references.bib
 csl: ecology.csl
@@ -8,7 +8,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
 ```
 
 # Introduction
@@ -17,7 +19,7 @@ Delete this placeholder text, and replace it with your introduction text.
 
 # Methods
 
-Add text here.
+The data I used was collected by NEON technicians [@thorpe2016introduction]. I will be working with NEON small mammal data [@parsons2023monitoring].
 
 ## Site Locations and Descriptions
 
@@ -29,7 +31,7 @@ Add text here.
 
 ## Data Analysis and Visualization
 
-Add text here.
+I used the ggplot2 package [@ggplot2] in R to do my visualizations.
 
 # Results
 
@@ -44,9 +46,144 @@ library("dplyr")
 library("tidyr")
 library("ggplot2")
 library("readr")
+library("lubridate")
+
+# load biomass data
+write.csv(megapit_cn, "data/raw_data/megapit_carbon_nitrogen.csv", row.names = FALSE)
 ```
 
+
+
+
 # Discussion
+
+# Figures
+
+```{r Nitrogen-%-Distrubution}
+
+# Plot Time! Nitrogen % Distrubution 
+
+# Plot 1: Nitrogen Distribution
+p1 <- ggplot(megapit_cn, aes(x = nitrogenPercent)) +
+  geom_histogram(binwidth = 0.2, fill = "#4CAF13", color = "black") +
+  labs(title = "Distribution of Nitrogen Content in Roots",
+       x = "Nitrogen Percent",
+       y = "Number of Samples") +
+  theme_minimal()
+print(p1)
+
+
+
+# Plot 2: Carbon vs Nitrogen
+p2 <- ggplot(megapit_cn, aes(x = carbonPercent, y = nitrogenPercent)) +
+  geom_point(alpha = 0.6, color = "#FF9800") +
+  geom_smooth(method = "lm", se = TRUE, color = "black") +
+  labs(title = "Carbon vs Nitrogen in Megapit Root Samples",
+       x = "Carbon Percent",
+       y = "Nitrogen Percent") +
+  theme_minimal()
+print(p2)
+
+
+
+# Plot 3: C:N Ratio
+megapit_cn$cn_ratio <- megapit_cn$carbonPercent / megapit_cn$nitrogenPercent
+p3 <- ggplot(megapit_cn, aes(x = cn_ratio)) +
+  geom_histogram(binwidth = 2, fill = "#9C27B0", color = "black") +
+  labs(title = "Carbon:Nitrogen Ratio Distribution",
+       x = "C:N Ratio",
+       y = "Count") +
+  theme_minimal()
+print(p3)
+
+
+
+
+# Plot for Megapit root carbon-nitrogen consumption as Nitrogen Vs Carbon
+
+# Step 1: Subset and join
+carbon_nitrogen <- megapit_data[["mpr_carbonNitrogen"]]
+root_sample <- megapit_data[["mpr_perrootsample"]]
+
+joined_data <- carbon_nitrogen %>%
+  left_join(root_sample, by = join_by(cnSampleID == sampleID))
+
+# Step 2: Filter usable rows
+filtered_data <- joined_data %>%
+  filter(!is.na(sizeCategory),
+         !is.na(nitrogenPercent),
+         !is.na(carbonPercent))
+
+# Step 3: Pivot to long format
+long_data <- filtered_data %>%
+  pivot_longer(cols = c(nitrogenPercent, carbonPercent),
+               names_to = "element",
+               values_to = "percent")
+
+# Step 4: Summarize mean + standard error for error bars
+summary_data <- long_data %>%
+  group_by(sizeCategory, element) %>%
+  summarise(mean_percent = mean(percent),
+            se = sd(percent) / sqrt(n()), .groups = "drop")
+
+# Step 5: Create bar plot with error bars and data labels
+ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
+  geom_errorbar(aes(ymin = mean_percent - se, ymax = mean_percent + se),
+                position = position_dodge(width = 0.9),
+                width = 0.2) +
+  geom_text(aes(label = round(mean_percent, 1)),
+            position = position_dodge(width = 0.9),
+            vjust = -1.2, size = 4) +  # 🔧 Raised above bars for visibility
+  scale_fill_manual(values = c("nitrogenPercent" = "red",
+                               "carbonPercent" = "blue"),
+                    labels = c("Nitrogen", "Carbon")) +
+  labs(title = "Nitrogen vs Carbon Consumption by Root Size Category",
+       x = "Root Size Category",
+       y = "Mean Percent (%)",
+       fill = "Element") +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  expand_limits(y = max(summary_data$mean_percent + summary_data$se) + 5)  # 📈 Extra headroom for labels
+
+
+
+
+
+                                   
+# Joining Data Example 
+
+# Subset out the relevant data frames
+carbon_nitrogen <- megapit_data[["mpr_carbonNitrogen"]]
+root_sample <- megapit_data[["mpr_perrootsample"]]
+
+# Check actual join column names
+# carbon_nitrogen uses: "cnSampleID"
+# root_sample uses: "sampleID"
+
+# Perform the join safely
+joined_data <- carbon_nitrogen %>%
+  left_join(root_sample, by = join_by(cnSampleID == sampleID))
+
+# Filter and remove any NA values in key columns
+high_nitrogen_samples <- joined_data %>%
+  filter(!is.na(nitrogenPercent),
+         !is.na(carbonPercent),
+         nitrogenPercent > 0.5)  # lowered threshold for more visible data
+
+# Plot the data
+ggplot(high_nitrogen_samples, aes(x = carbonPercent, y = nitrogenPercent)) +
+  geom_point(color = "blue") +
+  labs(title = "Samples with Nitrogen > 0.5% (Joined Tables)",
+       x = "Carbon Percent",
+       y = "Nitrogen Percent") +
+  theme_minimal()
+
+
+  
+```
+
+**Figure 1:** *Fontinalis neomexicana* seems to have higher dry mass than other taxa in this site.
 
 # Sources Cited
 
