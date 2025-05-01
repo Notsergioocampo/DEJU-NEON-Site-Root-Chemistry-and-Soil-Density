@@ -40,22 +40,26 @@ I used the ggplot2 package [@ggplot2] in R to do my visualizations.
 Add a number of code chunks in the Results section. These should read in, subset and plot the data as needed (no need to save any figures to pdf, since they will be put into the rendered document when you click 'knit'), and, for any hypotheses that you want to test, an appropriate statistical test. 
 
 ```{r load-packages}
-# If you add any additional packages here, make sure they are
-# also listed in the DESCRIPTION file
+#Load required packages
 library("dplyr")
 library("tidyr")
 library("ggplot2")
 library("readr")
 library("lubridate")
 
-# load biomass data
-write.csv(megapit_cn, "data/raw_data/megapit_carbon_nitrogen.csv", row.names = FALSE)
+#Load pre-downloaded NEON data from /data/raw_data/
+megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
+#megapit_biomass <- read.csv("data/raw_data/megapit_biomass.csv")
+soil_bulk <- read.csv("data/raw_data/soil_bulk_density.csv")
+
 ```
 
 
 
 
 # Discussion
+
+
 
 # Figures
 
@@ -102,8 +106,8 @@ print(p3)
 # Plot for Megapit root carbon-nitrogen consumption as Nitrogen Vs Carbon
 
 # Step 1: Subset and join
-carbon_nitrogen <- megapit_data[["mpr_carbonNitrogen"]]
-root_sample <- megapit_data[["mpr_perrootsample"]]
+carbon_nitrogen <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
+root_sample <- read.csv("data/raw_data/megapit_root_samples.csv")  
 
 joined_data <- carbon_nitrogen %>%
   left_join(root_sample, by = join_by(cnSampleID == sampleID))
@@ -158,25 +162,25 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
 
 ```{r Soil-Supporting-Root-Data, message=FALSE, warning=FALSE}
 
-# 📥 Download DEJU soil bulk density data
+#Download DEJU soil bulk density data
 soil_data <- loadByProduct(dpID = "DP1.00096.001", site = c("DEJU"), check.size = FALSE)
 soil_bulk <- soil_data[["mgp_perbulksample"]]
 
-# 💾 Save and reload (optional for reproducibility)
+#Save and reload (optional for reproducibility)
 write.csv(soil_bulk, "data/raw_data/soil_bulk_density.csv", row.names = FALSE)
 soil_bulk <- read.csv("data/raw_data/soil_bulk_density.csv")
 
-# 🔁 Load megapit root carbon/nitrogen data
+#Load megapit root carbon/nitrogen data
 megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
 
-# 🔗 Merge on siteID and domainID (best available match)
+#Merge on siteID and domainID (best available match)
 merged_soil_root <- megapit_cn %>%
   left_join(soil_bulk, by = c("siteID", "domainID")) %>%
   filter(!is.na(nitrogenPercent),
          !is.na(carbonPercent),
          !is.na(bulkDensExclCoarseFrag))  # Only available soil numeric
 
-# 📊 Plot 1: Soil Bulk Density vs. Root Nitrogen
+#Plot 1: Soil Bulk Density vs. Root Nitrogen
 p1 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = nitrogenPercent)) +
   geom_point(color = "#2E7D32", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
@@ -186,7 +190,7 @@ p1 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = nitrogenPerce
   theme_minimal()
 print(p1)
 
-# 📊 Plot 2: Soil Bulk Density vs. Root Carbon
+#Plot 2: Soil Bulk Density vs. Root Carbon
 p2 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = carbonPercent)) +
   geom_point(color = "#6D4C41", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
@@ -196,7 +200,7 @@ p2 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = carbonPercent
   theme_minimal()
 print(p2)
 
-# 📊 Plot 3: Soil Bulk Density vs. Root C:N Ratio
+#Plot 3: Soil Bulk Density vs. Root C:N Ratio
 merged_soil_root <- merged_soil_root %>%
   mutate(cn_ratio = carbonPercent / nitrogenPercent)
 
@@ -209,10 +213,10 @@ p3 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = cn_ratio)) +
   theme_minimal()
 print(p3)
 
-# 🧪 Summary:
-# While DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density provides
-# indirect insight into soil compaction and porosity, which may influence nutrient availability
-# and root nutrient content.
+#Summary:
+#DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density provides
+#indirect insight into soil compaction and porosity, which may influence nutrient availability
+#and root nutrient content.
 
 ```
 

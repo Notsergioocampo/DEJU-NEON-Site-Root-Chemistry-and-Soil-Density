@@ -3,55 +3,51 @@
 # April 22, 2025
 # socampo3@dons.usfca.edu
 
-# load neonUtilities package
+# Load neonUtilities package
 library("neonUtilities")
 
-# download, stacking, and loading into memory
-# the dataset we want to use
-# Root biomass and chemistry, Megapit DP1.10066.001
+# -------------------------------
+# Root biomass and chemistry data
+# -------------------------------
+
+# Download, stack, and load into memory
 megapit_data <- loadByProduct(dpID = "DP1.10066.001",
-                                      site = c("DEJU"),
-                                      check.size = FALSE)
+                              site = c("DEJU"),
+                              check.size = FALSE)
 
-
-# Old Code
-# Choose the correct data frame (adjust this if you want something else)
-
-# For example, you might be looking for 'megapitRootBiomass'
-megapit_biomass <- megapit_data$megapitRootBiomass
-
-# Save it as CSV
-write.csv(megapit_biomass, "data/raw_data/megapit_biomass.csv")
-
-
-# New Set
-# Extract nitrogen data from carbon-nitrogen table
+# Extract biomass and carbon-nitrogen data frames
+megapit_biomass <- megapit_data[["megapitRootBiomass"]]
 megapit_cn <- megapit_data[["mpr_carbonNitrogen"]]
 
-# Save to CSV for future reference or sharing
+# Save to CSV
+write.csv(megapit_biomass, "data/raw_data/megapit_biomass.csv", row.names = FALSE)
 write.csv(megapit_cn, "data/raw_data/megapit_carbon_nitrogen.csv", row.names = FALSE)
 
-# Load it back in later (when you're starting from saved data)
-megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
+# Extract and save root sample metadata (used for sizeCategory)
+root_sample <- megapit_data[["mpr_perrootsample"]]
 
+if (nrow(root_sample) > 0) {
+  write.csv(root_sample, "data/raw_data/megapit_root_samples.csv", row.names = FALSE)
+} else {
+  message("⚠️ No data in 'mpr_perrootsample'. Writing placeholder.")
+  write.csv(data.frame(cnSampleID = character(),
+                       sampleID = character(),
+                       sizeCategory = character()),
+            "data/raw_data/megapit_root_samples.csv",
+            row.names = FALSE)
+}
 
+# -------------------------------
+# Soil bulk density data
+# -------------------------------
 
-
-# Load the soil chemistry dataset (DP1.00096.001)
+# Download and load bulk density data
 soil_data <- loadByProduct(dpID = "DP1.00096.001",
-                           site = c("DEJU"),          # Replace or expand with other sites if needed
+                           site = c("DEJU"),
                            check.size = FALSE)
 
-# Extract the soil chemical properties table
-# This will likely be named "slc_soilChemistry" but you can check names(soil_data) to confirm
-soil_chem <- soil_data[["slc_soilChemistry"]]
+# Extract relevant table
+soil_bulk <- soil_data[["mgp_perbulksample"]]
 
-# Save the dataset to CSV
-write.csv(soil_chem, "data/raw_data/soil_chemistry.csv", row.names = FALSE)
-
-# Reload from CSV if needed later
-soil_chem <- read.csv("data/raw_data/soil_chemistry.csv")
-
-
-
-          
+# Save to CSV
+write.csv(soil_bulk, "data/raw_data/soil_bulk_density.csv", row.names = FALSE)
