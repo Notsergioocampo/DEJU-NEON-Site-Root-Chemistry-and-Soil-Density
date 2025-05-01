@@ -134,56 +134,91 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
                 width = 0.2) +
   geom_text(aes(label = round(mean_percent, 1)),
             position = position_dodge(width = 0.9),
-            vjust = -1.2, size = 4) +  # 🔧 Raised above bars for visibility
-  scale_fill_manual(values = c("nitrogenPercent" = "red",
-                               "carbonPercent" = "blue"),
-                    labels = c("Nitrogen", "Carbon")) +
+            vjust = -1.2, size = 4) +
+  scale_fill_manual(values = c("carbonPercent" = "blue",
+                               "nitrogenPercent" = "red"),
+                    labels = c("Carbon", "Nitrogen")) +
   labs(title = "Nitrogen vs Carbon Consumption by Root Size Category",
        x = "Root Size Category",
        y = "Mean Percent (%)",
        fill = "Element") +
   theme_minimal() +
   theme(legend.position = "top") +
-  expand_limits(y = max(summary_data$mean_percent + summary_data$se) + 5)  # 📈 Extra headroom for labels
+  expand_limits(y = max(summary_data$mean_percent + summary_data$se, na.rm = TRUE) + 5)
 
 
 
 
 
-                                   
-# Joining Data Example 
 
-# Subset out the relevant data frames
-carbon_nitrogen <- megapit_data[["mpr_carbonNitrogen"]]
-root_sample <- megapit_data[["mpr_perrootsample"]]
+```
+**Figure 1:** *Fontinalis neomexicana* seems to have higher dry mass than other taxa in this site.
 
-# Check actual join column names
-# carbon_nitrogen uses: "cnSampleID"
-# root_sample uses: "sampleID"
 
-# Perform the join safely
-joined_data <- carbon_nitrogen %>%
-  left_join(root_sample, by = join_by(cnSampleID == sampleID))
 
-# Filter and remove any NA values in key columns
-high_nitrogen_samples <- joined_data %>%
+```{r Soil-Supporting-Root-Data, message=FALSE, warning=FALSE}
+
+# 📥 Download DEJU soil bulk density data
+soil_data <- loadByProduct(dpID = "DP1.00096.001", site = c("DEJU"), check.size = FALSE)
+soil_bulk <- soil_data[["mgp_perbulksample"]]
+
+# 💾 Save and reload (optional for reproducibility)
+write.csv(soil_bulk, "data/raw_data/soil_bulk_density.csv", row.names = FALSE)
+soil_bulk <- read.csv("data/raw_data/soil_bulk_density.csv")
+
+# 🔁 Load megapit root carbon/nitrogen data
+megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
+
+# 🔗 Merge on siteID and domainID (best available match)
+merged_soil_root <- megapit_cn %>%
+  left_join(soil_bulk, by = c("siteID", "domainID")) %>%
   filter(!is.na(nitrogenPercent),
          !is.na(carbonPercent),
-         nitrogenPercent > 0.5)  # lowered threshold for more visible data
+         !is.na(bulkDensExclCoarseFrag))  # Only available soil numeric
 
-# Plot the data
-ggplot(high_nitrogen_samples, aes(x = carbonPercent, y = nitrogenPercent)) +
-  geom_point(color = "blue") +
-  labs(title = "Samples with Nitrogen > 0.5% (Joined Tables)",
-       x = "Carbon Percent",
-       y = "Nitrogen Percent") +
+# 📊 Plot 1: Soil Bulk Density vs. Root Nitrogen
+p1 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = nitrogenPercent)) +
+  geom_point(color = "#2E7D32", alpha = 0.6) +
+  geom_smooth(method = "lm", color = "black", se = TRUE) +
+  labs(title = "Soil Bulk Density vs. Root Nitrogen",
+       x = "Bulk Density (g/cm³, excluding coarse fragments)",
+       y = "Root Nitrogen (%)") +
   theme_minimal()
+print(p1)
 
+# 📊 Plot 2: Soil Bulk Density vs. Root Carbon
+p2 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = carbonPercent)) +
+  geom_point(color = "#6D4C41", alpha = 0.6) +
+  geom_smooth(method = "lm", color = "black", se = TRUE) +
+  labs(title = "Soil Bulk Density vs. Root Carbon",
+       x = "Bulk Density (g/cm³, excluding coarse fragments)",
+       y = "Root Carbon (%)") +
+  theme_minimal()
+print(p2)
 
-  
+# 📊 Plot 3: Soil Bulk Density vs. Root C:N Ratio
+merged_soil_root <- merged_soil_root %>%
+  mutate(cn_ratio = carbonPercent / nitrogenPercent)
+
+p3 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = cn_ratio)) +
+  geom_point(color = "#9C27B0", alpha = 0.6) +
+  geom_smooth(method = "lm", color = "black", se = TRUE) +
+  labs(title = "Soil Bulk Density vs. Root C:N Ratio",
+       x = "Bulk Density (g/cm³, excluding coarse fragments)",
+       y = "Root C:N Ratio") +
+  theme_minimal()
+print(p3)
+
+# 🧪 Summary:
+# While DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density provides
+# indirect insight into soil compaction and porosity, which may influence nutrient availability
+# and root nutrient content.
+
 ```
 
-**Figure 1:** *Fontinalis neomexicana* seems to have higher dry mass than other taxa in this site.
+
+
+
 
 # Sources Cited
 

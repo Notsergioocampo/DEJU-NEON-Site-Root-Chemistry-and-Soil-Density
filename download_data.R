@@ -36,35 +36,22 @@ megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
 
 
 
-# Plot Time! Nitrogen % Distrubution 
 
-library(ggplot2)
+# Load the soil chemistry dataset (DP1.00096.001)
+soil_data <- loadByProduct(dpID = "DP1.00096.001",
+                           site = c("DEJU"),          # Replace or expand with other sites if needed
+                           check.size = FALSE)
 
-ggplot(megapit_cn, aes(x = nitrogenPercent)) +
-  geom_histogram(binwidth = 0.2, fill = "#4CAF13", color = "black") +
-  labs(title = "Distribution of Nitrogen Content in Roots",
-       x = "Nitrogen Percent",
-       y = "Number of Samples") +
-  theme_minimal()
+# Extract the soil chemical properties table
+# This will likely be named "slc_soilChemistry" but you can check names(soil_data) to confirm
+soil_chem <- soil_data[["slc_soilChemistry"]]
 
-# Exploring Carbon Vs Nitrogen for Correlation 
-ggplot(megapit_cn, aes(x = carbonPercent, y = nitrogenPercent)) +
-  geom_point(alpha = 0.6, color = "#FF9800") +
-  geom_smooth(method = "lm", se = TRUE, color = "black") +
-  labs(title = "Carbon vs Nitrogen in Megapit Root Samples",
-       x = "Carbon Percent",
-       y = "Nitrogen Percent") +
-  theme_minimal()
+# Save the dataset to CSV
+write.csv(soil_chem, "data/raw_data/soil_chemistry.csv", row.names = FALSE)
 
-# Calculating C:N ratio
+# Reload from CSV if needed later
+soil_chem <- read.csv("data/raw_data/soil_chemistry.csv")
 
-megapit_cn$cn_ratio <- megapit_cn$carbonPercent / megapit_cn$nitrogenPercent
-ggplot(megapit_cn, aes(x = cn_ratio)) +
-  geom_histogram(binwidth = 2, fill = "#9C27B0", color = "black") +
-  labs(title = "Carbon:Nitrogen Ratio Distribution",
-       x = "C:N Ratio",
-       y = "Count") +
-  theme_minimal()
 
 
           
