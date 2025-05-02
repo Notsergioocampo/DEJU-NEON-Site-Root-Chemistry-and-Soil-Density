@@ -16,7 +16,7 @@ megapit_data <- loadByProduct(dpID = "DP1.10066.001",
                               check.size = FALSE)
 
 # Extract biomass and carbon-nitrogen data frames
-megapit_biomass <- megapit_data[["megapitRootBiomass"]]
+megapit_biomass <- megapit_data[["mpr_perrootsample"]][["incrementRootBiomass"]]
 megapit_cn <- megapit_data[["mpr_carbonNitrogen"]]
 
 # Save to CSV
