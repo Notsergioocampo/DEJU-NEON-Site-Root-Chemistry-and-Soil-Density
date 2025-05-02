@@ -19,7 +19,8 @@ Delete this placeholder text, and replace it with your introduction text.
 
 # Methods
 
-The data I used was collected by NEON technicians [@thorpe2016introduction]. I will be working with NEON small mammal data [@parsons2023monitoring].
+The data I used was collected by NEON technicians [@thorpe2016introduction]. 
+I will be working with NEON small mammal data [@parsons2023monitoring].
 
 ## Site Locations and Descriptions
 
@@ -37,7 +38,10 @@ I used the ggplot2 package [@ggplot2] in R to do my visualizations.
 
 ## Subsections are ok in the results section too
 
-Add a number of code chunks in the Results section. These should read in, subset and plot the data as needed (no need to save any figures to pdf, since they will be put into the rendered document when you click 'knit'), and, for any hypotheses that you want to test, an appropriate statistical test. 
+Add a number of code chunks in the Results section. These should read in, 
+subset and plot the data as needed (no need to save any figures to pdf, since 
+they will be put into the rendered document when you click 'knit'), and, for 
+any hypotheses that you want to test, an appropriate statistical test. 
 
 ```{r load-packages}
 #Load required packages
@@ -148,7 +152,8 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
        fill = "Element") +
   theme_minimal() +
   theme(legend.position = "top") +
-  expand_limits(y = max(summary_data$mean_percent + summary_data$se, na.rm = TRUE) + 5)
+  expand_limits(y = max(summary_data$mean_percent + summary_data$se, na.rm = 
+                          TRUE) + 5)
 
 
 
@@ -163,7 +168,8 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
 ```{r Soil-Supporting-Root-Data, message=FALSE, warning=FALSE}
 
 #Download DEJU soil bulk density data
-soil_data <- loadByProduct(dpID = "DP1.00096.001", site = c("DEJU"), check.size = FALSE)
+soil_data <- loadByProduct(dpID = "DP1.00096.001", site = c("DEJU"), check.size 
+                           = FALSE)
 soil_bulk <- soil_data[["mgp_perbulksample"]]
 
 #Save and reload (optional for reproducibility)
@@ -181,7 +187,8 @@ merged_soil_root <- megapit_cn %>%
          !is.na(bulkDensExclCoarseFrag))  # Only available soil numeric
 
 #Plot 1: Soil Bulk Density vs. Root Nitrogen
-p1 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = nitrogenPercent)) +
+p1 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = 
+                                     nitrogenPercent)) +
   geom_point(color = "#2E7D32", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root Nitrogen",
@@ -191,7 +198,8 @@ p1 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = nitrogenPerce
 print(p1)
 
 #Plot 2: Soil Bulk Density vs. Root Carbon
-p2 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = carbonPercent)) +
+p2 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = 
+                                     carbonPercent)) +
   geom_point(color = "#6D4C41", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root Carbon",
@@ -214,9 +222,9 @@ p3 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = cn_ratio)) +
 print(p3)
 
 #Summary:
-#DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density provides
-#indirect insight into soil compaction and porosity, which may influence nutrient availability
-#and root nutrient content.
+"DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density 
+provides indirect insight into soil compaction and porosity, which may 
+influence nutrient availability and root nutrient content."
 
 ```
 
