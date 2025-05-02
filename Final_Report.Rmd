@@ -51,10 +51,8 @@ library("ggplot2")
 library("readr")
 library("lubridate")
 library("neonUtilities")
-
 #Load pre-downloaded NEON data from /data/raw_data/
 megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
-#megapit_biomass <- read.csv("data/raw_data/megapit_biomass.csv")
 soil_bulk <- read.csv("data/raw_data/soil_bulk_density.csv")
 
 ```
@@ -69,9 +67,7 @@ soil_bulk <- read.csv("data/raw_data/soil_bulk_density.csv")
 # Figures
 
 ```{r Nitrogen-Distrubution}
-
-# Plot Time! Nitrogen % Distrubution 
-
+# Plot Time! Nitrogen % Distrubution
 # Plot 1: Nitrogen Distribution
 ggplot(megapit_cn, aes(x = nitrogenPercent)) +
   geom_histogram(binwidth = 0.2, fill = "#4CAF13", color = "black") +
@@ -79,10 +75,6 @@ ggplot(megapit_cn, aes(x = nitrogenPercent)) +
        x = "Nitrogen Percent",
        y = "Number of Samples") +
   theme_minimal()
-
-
-
-
 # Plot 2: Carbon vs Nitrogen
 ggplot(megapit_cn, aes(x = carbonPercent, y = nitrogenPercent)) +
   geom_point(alpha = 0.6, color = "#FF9800") +
@@ -91,10 +83,6 @@ ggplot(megapit_cn, aes(x = carbonPercent, y = nitrogenPercent)) +
        x = "Carbon Percent",
        y = "Nitrogen Percent") +
   theme_minimal()
-
-
-
-
 # Plot 3: C:N Ratio
 megapit_cn$cn_ratio <- megapit_cn$carbonPercent / megapit_cn$nitrogenPercent
 ggplot(megapit_cn, aes(x = cn_ratio)) +
@@ -103,37 +91,27 @@ ggplot(megapit_cn, aes(x = cn_ratio)) +
        x = "C:N Ratio",
        y = "Count") +
   theme_minimal()
-
-
-
-
 # Plot for Megapit root carbon-nitrogen consumption as Nitrogen Vs Carbon
-
 # Step 1: Subset and join
 carbon_nitrogen <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
-root_sample <- read.csv("data/raw_data/megapit_root_samples.csv")  
-
+root_sample <- read.csv("data/raw_data/megapit_root_samples.csv")
 joined_data <- carbon_nitrogen %>%
   left_join(root_sample, by = join_by(cnSampleID == sampleID))
-
 # Step 2: Filter usable rows
 filtered_data <- joined_data %>%
   filter(!is.na(sizeCategory),
          !is.na(nitrogenPercent),
          !is.na(carbonPercent))
-
 # Step 3: Pivot to long format
 long_data <- filtered_data %>%
   pivot_longer(cols = c(nitrogenPercent, carbonPercent),
                names_to = "element",
                values_to = "percent")
-
 # Step 4: Summarize mean + standard error for error bars
 summary_data <- long_data %>%
   group_by(sizeCategory, element) %>%
   summarise(mean_percent = mean(percent),
             se = sd(percent) / sqrt(n()), .groups = "drop")
-
 # Step 5: Create bar plot with error bars and data labels
 ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
@@ -152,14 +130,8 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
        fill = "Element") +
   theme_minimal() +
   theme(legend.position = "top") +
-  expand_limits(y = max(summary_data$mean_percent + summary_data$se, na.rm = 
+  expand_limits(y = max(summary_data$mean_percent + summary_data$se, na.rm =
                           TRUE) + 5)
-
-
-
-
-
-
 ```
 **Figure 1:** *Fontinalis neomexicana* seems to have higher dry mass than other taxa in this site.
 
@@ -168,64 +140,52 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
 ```{r Soil-Supporting-Root-Data, message=FALSE, warning=FALSE}
 
 #Download DEJU soil bulk density data
-soil_data <- loadByProduct(dpID = "DP1.00096.001", site = c("DEJU"), check.size 
+soil_data <- loadByProduct(dpID = "DP1.00096.001", site = c("DEJU"), check.size
                            = FALSE)
 soil_bulk <- soil_data[["mgp_perbulksample"]]
-
 #Save and reload (optional for reproducibility)
 write.csv(soil_bulk, "data/raw_data/soil_bulk_density.csv", row.names = FALSE)
 soil_bulk <- read.csv("data/raw_data/soil_bulk_density.csv")
-
 #Load megapit root carbon/nitrogen data
 megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
-
 #Merge on siteID and domainID (best available match)
 merged_soil_root <- megapit_cn %>%
   left_join(soil_bulk, by = c("siteID", "domainID")) %>%
   filter(!is.na(nitrogenPercent),
          !is.na(carbonPercent),
          !is.na(bulkDensExclCoarseFrag))  # Only available soil numeric
-
 #Plot 1: Soil Bulk Density vs. Root Nitrogen
-p1 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = 
-                                     nitrogenPercent)) +
+ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
+                               nitrogenPercent)) +
   geom_point(color = "#2E7D32", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root Nitrogen",
        x = "Bulk Density (g/cm³, excluding coarse fragments)",
        y = "Root Nitrogen (%)") +
   theme_minimal()
-print(p1)
-
 #Plot 2: Soil Bulk Density vs. Root Carbon
-p2 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = 
-                                     carbonPercent)) +
+ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
+                               carbonPercent)) +
   geom_point(color = "#6D4C41", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root Carbon",
        x = "Bulk Density (g/cm³, excluding coarse fragments)",
        y = "Root Carbon (%)") +
   theme_minimal()
-print(p2)
-
 #Plot 3: Soil Bulk Density vs. Root C:N Ratio
 merged_soil_root <- merged_soil_root %>%
   mutate(cn_ratio = carbonPercent / nitrogenPercent)
-
-p3 <- ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = cn_ratio)) +
+ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = cn_ratio)) +
   geom_point(color = "#9C27B0", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root C:N Ratio",
        x = "Bulk Density (g/cm³, excluding coarse fragments)",
        y = "Root C:N Ratio") +
   theme_minimal()
-print(p3)
-
 #Summary:
 "DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density 
 provides indirect insight into soil compaction and porosity, which may 
 influence nutrient availability and root nutrient content."
-
 ```
 
 
