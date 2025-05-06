@@ -92,7 +92,7 @@ ggplot(megapit_cn, aes(x = carbonPercent, y = nitrogenPercent)) +
 
 **Figure 2:** *Fontinalis neomexicana* seems to have higher dry mass than other taxa in this site.
 
-```{r C:N-Ratio}
+```{r C-N-Ratio}
 # Plot 3: C:N Ratio
 megapit_cn$cn_ratio <- megapit_cn$carbonPercent / megapit_cn$nitrogenPercent
 ggplot(megapit_cn, aes(x = cn_ratio)) +
@@ -169,7 +169,10 @@ merged_soil_root <- megapit_cn %>%
   filter(!is.na(nitrogenPercent),
          !is.na(carbonPercent),
          !is.na(bulkDensExclCoarseFrag))  # Only available soil numeric
+```
 
+
+```{r Soil-Bulk-Density-vs-Root-Nitrogen}
 # Plot 1: Soil Bulk Density vs. Root Nitrogen
 ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
                                nitrogenPercent)) +
@@ -179,7 +182,11 @@ ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
        x = "Bulk Density (g/cm³, excluding coarse fragments)",
        y = "Root Nitrogen (%)") +
   theme_minimal()
+```
 
+**Figure 5:** The relationbship...#Summary: "DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density provides indirect insight into soil compaction and porosity, which may influence nutrient availability and root nutrient content."
+
+```{r Soil-Bulk-Density-vs-Root-Carbon}
 # Plot 2: Soil Bulk Density vs. Root Carbon
 ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
                                carbonPercent)) +
@@ -189,10 +196,15 @@ ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
        x = "Bulk Density (g/cm³, excluding coarse fragments)",
        y = "Root Carbon (%)") +
   theme_minimal()
+```
 
+**Figure 5:** The relationbship...#Summary: "DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density provides indirect insight into soil compaction and porosity, which may influence nutrient availability and root nutrient content."
+
+```{r Soil-Bulk-Density-vs-Root-C-N-Ratio}
 # Plot 3: Soil Bulk Density vs. Root C:N Ratio
 merged_soil_root <- merged_soil_root %>%
   mutate(cn_ratio = carbonPercent / nitrogenPercent)
+
 ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = cn_ratio)) +
   geom_point(color = "#9C27B0", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
