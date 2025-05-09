@@ -1,5 +1,5 @@
 ---
-title: "Final Report"
+title: "DEJU NEON Site Root Chemistry and Soil Density "
 author: "Sergio O."
 date: "April 11, 2025"
 bibliography: references.bib
@@ -15,26 +15,81 @@ knitr::opts_chunk$set(echo = FALSE,
 
 # Introduction
 
-Delete this placeholder text, and replace it with your introduction text.
+Comprehending the belowground nutrient cycling is pivotal for assessing how ecosystems can store carbon, support plant growth, and respond to environmental changes. In terrestrial systems such as those limited by cold temperatures and resource scarcity, plant roots represent the primary interface for vegetation and solid environments, thus mediating water and nutrient uptake, further influencing microbial community dynamics, and contributing to the long-term organic formations in the soil. Arctic tundra soils are primarily made of decomposing plant detritus. The microbial decomposition of detritus material plays a central role in regulating carbon and nitrogen availability [@weintraub2003interactions]. Since most microbial activity in these soils is heterotrophic and thus dependent on plant-derived carbon, the amount and the quality of root inputs, also known as organic matter, are central to shaping the availability of biologically accessible nitrogen. Interactions between root traits and microbial functions must form the biochemical building blocks of carbon and nitrogen turnover in ecosystems that identify as boreal. Understanding the elemental composition of roots, specifically carbon and nitrogen content, thus not only mirrors the physiological conditions of vegetation and provides critical information for broader biogeochemical research towards nutrient-scarce environments. 
+
+As stated, roots play an important role in water absorption and facilitating nutrients; however, they also influence belowground biological processes in essential ways for maintaining plant homeostasis in a changing ecosystem. Plant roots in terrestrial systems link vegetation and soil environments, entirely shaping the microbial communities around them and contributing to organic matter inputs. Mediating the biochemical exchanges supports plant growth [@zhalnina2018dynamic]. Reinforcing the idea that beyond their passive contribution of organic plant matter, roots continue to alter the biological properties and its nearest rhizosphere in order to create a local condition that can regular the microbial activity and nutrient availability in an area so scarce as mentioned before [@tday2010tree]. Chemical compounds such as carbon and nitrogen make plant structure and metabolism possible, shaping long-term soil fertility and biogeochemical cycling.
+
+Nitrogen is critical for synthesising various essential nutrients such as amino acids, nucleic acids, and even enzymes, reinstating its primary determining factor of metabolic functions and productivity of plants. For many ecosystems, nitrogen availability caps growth while also in excess can achieve the same conclusion, especially in cold and nutrient-poor soil. Carbon provides the foundation for plant biomass and is necessary for developing and stabilising soil containing organic matter. Substantial portions of photosynthetically fixed carbon are estimated to be around 40% to 73% allocated belowground, highlighting the important role of roots in carbon cycling within ecosystems  [@tday2010tree]. Measurements of percent nitrogen and percent carbon in roots can offer indispensable insight towards both the physiological state of the plant and or the nutrient status of the soil in which it resides. 
+
+The carbon to nitrogen (C:N) ratio is an informative metric that indicates the balance between energy-rich carbon compounds and nutrient-abundant nitrogen. This ratio is commonly used in this field of research to predict decomposition rates of organic matter, microbial accessibility or organic substrates, and broader ecosystem nutrient dynamics and fluctuations. Roots with a higher C:N ratio tend to decompose slowly, demonstrating a slower turnover of carbon and nitrogen pools within the soil. These effects depend on root size, usually finer roots with lower C:N ratios that contribute significantly to nitrogen cycling in forest and tundra systems [@trager2017potential]. Recent ecosystem modelling has depicted fine root traits being influential towards predicting soil carbon storage and heterotrophic respiration, particularly within functional plant types within tundra ecosystems such as sedges and grasses [@euskirchen2022assessing]. Boreal systems have been observed to have a trend where carbon derived from roots decomposes substantially slower than lead litter, contributing to longer-term nitrogen retention within the soil organic matter  [@kyaschenko2019soil]. Some variables that may influence root elemental composition are temperature, moisture availability, and soil texture. Nitrogen addition reduces fine root biomass and surface area towards surface-level soil layers, significantly altering nutrient availability below ground root traits [@yan2017spatial]. Variations towards the soil properties such as moisture, pH, ammonium concentration, and even carbon-to-nitrogen ratios have been shown to influence the composition and distribution of soil microbial communities, indicating belowground nutrient availability and biogeochemistry are indeed linked to biological structure  [@shi2015vegetation]. Soil bulk density is a special integrative variable analysed in this research, defined as the mass of dry soil per unit volume, porosity, and mineral composition. High bulk density typically signifies compacted soil with low pore space, correlation with restricted root growth, limited aeration, and reduced microbial activity. Soil compaction results mainly from anthropogenic disturbances such as urban development, constraining root growth and limiting physical expansion and access to essential resources  [@tday2010tree]. In contrast, low bulk-density soils tend to be more biologically active and structurally favourable for many root developments and microbial colonisations. Bulk density can be an intermediate for physical constraints towards nutrient uptake and root decay processes. 
+
+Using the standardised data from the National Ecological Observatory Network (NEON), a nationwide infrastructure program designed explicitly for ecological monitoring, investigations towards these relationships were analysed. This study focused on NEON’s Delta Junction Site (DEJU), located in the lower east part of Alaska within the boreal forest, a tundra transition zone of domain 19 (Taiga). The DEJU site is identified by its subarctic climate, discontinuous permafrost, and nutrient-limited soils. These provide a unique setting to evaluate how plant roots allocate and store carbon and nitrogen under extreme environmental conditions. Research objectives address the following questions: How do root nitrogen, carbon and C:N ratios vary across root size classes such as ≤4mm against >4mm? And do these nutrient concentrations show meaningful association towards soil bulk density, used here as an intermediate for physical soil constraints 
+
 
 # Methods
 
-The data I used was collected by NEON technicians [@thorpe2016introduction]. 
-I will be working with NEON small mammal data [@parsons2023monitoring].
+All data for this study were accessed and processed using R, a free, open-source statistical programming environment. neonUtilities packages were used to efficiently download, stack, and organise data from the National Ecological Observatory Network (NEON). The analysis primarily focused on two NEON data products collected from soil megapit protocols at the Delta Junction (DEJU) site in Alaska. 
+
+The first dataset, DP1.10066.001 Root Biomass and Chemistry, includes the biomass estimate and elemental composition data towards root fragments extracted from different soil horizons within a megapit sample. Primary variables of interest were percent carbon, percent nitrogen, and the derived carbon-to-nitrogen ratios. The second dataset was DP1.00096.001, the soil's physical and Chemical Properties, providing information on the bulk density, soil horizon depth, and corrections for the coarse fragments, a necessary component for estimating true soil compaction and porosity.
+
+Data was retrieved using the loadByProduct() function, which tells the specific site - “DEJU” and check.size = FALSE to automatically process all available data from the DEJU site. This function returns a named list of data frames containing stacked tables for every data product, consolidating observations across the years and sampling events into a singular format. 
+
+To classify root samples via size, we extracted the mpr_carbonNitrogen table from the root chemistry product and joined it with mpr_perrootsample metadata table using the shared sampleID identifier. sizeCategory variable designated root fragments as either “fine” if it was (≤4 mm or “coarse” if they were >4 mm. Using this data, they were categorised for comparison for nutrient concentrations. Soil dataset using mgp_perbulksample table was used to pull bulk density values. Values were adjusted for the volume of coarse fragments when needed, following NEON’s post-processing protocols. Based on the depth range or the horizon ID, the bulk density values were joined to the root chemistry data, depending on the metadata availability and structure. 
+
+The data was cleaned before analysis. To prevent statistical distortion, the merged dataset was filtered to exclude samples with missing values, including values with a zero for %C, %N, or bulk density. The data analysis was explored to assess the distribution of values and identify potential outliers. Summary statistics were calculated for each root size category, including group means and standard errors. 
+
+Visualisations were produced using ggplot2 packages. Histograms of nitrogen content and C:N ratios, scatter plots comparing %C and %N, soil bulk density versus nutrient content, and grouped bar charts displaying mean values by root size with error bars indicating one standard error of the mean is made by ggplot2 packages. All the code used for data processing, analysis, and rendering for visualisation was written in R Markdown to ensure full reproducibility and transparency of the research workflow. 
+
 
 ## Site Locations and Descriptions
 
-Working the the site code DEJU, give me the data sets that were collected in the Delta Junction sites located in the state of Alaska. NEON Domain assisted in the data collection of Megapit Information and in the soil data
+This study used data from the Delta Junction (DEJU) field site, one of the core terrestrial locations monitored by NEON. DEJU, to be precise, is approximately 150 kilometres southeast of Fairbanks and falls within the Taiga NEON Domain 19. This domain represents the northern boreal forest transition zone. The tundra is characterised by a subarctic climate with long cold winters, short growing seasons, and extremely scarce nutrient resources. 
+
+DEJU site occupies a boreal coniferous biome where the vegetation is dominated by the black spruce (Picea mariana) and white spruce (Picea glauca) along with low shrubs, sedges, mosses, and dwarf birch (Betula glandulosa).  These well-adapted species can handle the region's low temperatures, waterlogged soils, and frequent nutrient bottlenecks. The site is underlain by discontinuous permafrost, creating highly variable vertical patterns in soil temperature, moisture, and microbial activity. 
+
+Soils at DEJU are classified as gelisols because their cold climate soils are characterised by perennially frozen sublayers, cryoturbation, and organic-rich surface horizons. Edaphic properties within the soil create strong physical and biochemical constraints for plant roots. Usually, these soils are poorly drained, slow to thaw in spring, and low in biologically disposable nitrogen and phosphorus. As a result, plant root systems must operate under critical environmental stress. The chemical composition of roots, such as their nitrogen and carbon content, reflects adaptive strategies and biogeochemical responses under these extreme conditions.
+
+NEON technicians obtained all root and soil data used in this analysis from a singular soil megapit excited near the site's eddy covariance flux tower. The eddy covariance flux tower consistently measures carbon, water, and energy exchanges. The megapit was sampled using NEON’s standardised soil horizon protocols. This ensured consistency across sites and the representativeness of local vertical variations within the soil properties.
+
+DEJU lies in a high latitude, cold climate ecosystem with persistent soil compaction, moisture saturation, and nutrient limitations, providing the perfect setting for studying root nutrient dynamics under environmental constraints. As climate proceeds to change, accelerating permafrost thaw and altering structures of boreal ecosystems, baseline measurements from the DEJU site offer invaluable insight towards root systems shifting to soil conditions and nutrient regimes within the northern biomes. 
 
 ## Field Sampling Design
 
-Add text here.
+Field sampling was conducted by official NEON technicians using standardised protocols to ensure consistency in methodology across all NEON sites and sampling time points [@ayres2019quantitative]. At the Delta Junction field sites, one soil megapit was excavated following NEON’s soil megapit characterisation protocol to obtain vertical profiles of root biomass, chemical composition, and the soil's physical properties [@keller2008continental]. The megapit was located adjacent to DEJU’s instrumented eddy covariance flux tower. This allowed the sampling to represent the same ecological footprint as the other ongoing carbon and energy flux measurements [@neon2017]. 
+
+The pit was manually excavated using stratified sampling, with samples collected at multiple depth intervals corresponding to soil horizons such as organic, mineral, and transitional layers. Each soil horizon was carefully delineated based on field observations of texture, colour, and structure to allow for accurate vertical profiling of below-ground traits.
+
+Roots were manually extracted from the exposed soil wall using a combination of sieving and hand-picking methods, following NEON’s megapit_perrootsample and mpr_carbonNitrogen protocols. The soil matrix was then separated, and roots were gently cleaned with DI water to remove remaining soil particles. They were stored under cold conditions before processing. 
+
+Each root sample was categorised using the diameter and turned into a standardised size class. This study grouped roots into two main categories: fine roots for ≤ 4 mm and coarse roots for (> 4 mm. This is consistent with fields available for the sizeCategory variable. At the same time, NEON sampling protocols could distinguish between intermediate-size classes. Only fine and coarse classifications were deployed in the analysis due to sample availability and consistency.
+
+Each sample was uniquely identified with a sampleID that encoded metadata about horizon, depth interval, and size class. These identifiers were important for linking data to their corresponding chemical properties and joining data sets with soil physical data in post-processing.
+
+Within the laboratory, root samples were oven-dried and grounded before elemental analysis. Percent carbon and nitrogen were quantified from dry combustion, typically by a Carbon, Hydrogen, and Nitrogen analyser. Carbon to nitrogen ratios were then derived and calculated from mass-based values unless molar conversion was indicated in NEON’s records for that sampling year and that sire.
+
+Soil Sampling
+
+Undisturbed soil cores were collected to determine bulk density at matching depth intervals near the zone. Samples were collected via cylindrical sleeves inserted horizontally into the soil wall to minimise compaction or volume distortion. Depth intervals were aligned with root collection zones to allow accurate soil and root data pairing by horizon.
+
+Bulk density was calculated following NEON protocol using the formula, Bulk Density = Oven Dry mass of soil  (volume of core - volume of coarse fragments). This correction ensured gravel, rocks, or root segments did not artificially reduce bulk density estimates. All soil samples were dried at 105 degrees Celsius until mass stabilisation was achieved, after which coarse fragments of >2mm were sieved and subtracted from the total core volume. 
+
+All field and laboratory data were entered into NEON’s centralised database system. Standardised sampleID tags enabled precise cross-referencing between root chemical traits and soil physical properties, supporting integrative analyses of how soil structure influences root elemental composition within the vertical soil profile.
 
 ## Data Analysis and Visualization
 
 I used the ggplot2 package [@ggplot2] in R to do my visualizations.
 
 # Results
+
+The root nitrogen concentration at the DEJU site demonstrated moderate variability across samples, with most values ranging from approximately 0.3% to 1%. Distributions of nitrogen content were notably right-skewed (Figure 1), exhibiting the majority of root samples being relatively nitrogen-poor, which is consistent with expectations for nutrient-limited boreal soils.
+
+A percent comparison between carbon and nitrogen revealed a weak positive linear relationship (Figure 2). However, the trendline suggested that roots with higher carbon content also tended to have slightly more elevated nitrogen levels. Scatter plots were substantial, making the correlation weak. This could suggest that while some co-regulation of carbon and nitrogen storage could occur within roots, the data suggest it is more plausible mediated by other biological or environmental factors. 
+
+The Calculated carbon-to-nitrogen ratio depicted extreme variation, with most values falling between 40 and 80 (Figure 3). These radically high and variable ratios strongly indicate slow decomposition potential and reduced microbial availability, which aligns with expectations for cold, carbon-abundant root tissues in boreal ecosystems.  
+
+When ranked by root size category, fine roots ≤ 4 mm displayed a slightly greater average nitrogen content and lower C:N ratio than coarse roots > 4 mm (Figure 4). Percent carbon was relatively consistent across size classes, indicating that structural investments in carbon are not correlated by diameter. At the same time, nitrogen content may be more related to metabolic activity, which is usual within finer roots. 
+
+No relationships of interest were observed between soil bulk density or any of the measured root traits, including nitrogen seen in (Figure 5), Carbon (Figure 6), and C:N ratios (Figure 7). Linear trend lines for all comparisons were almost flat, meaning there was little to no association between soil compaction and root elemental composition for the same profile sample. 
 
 ## Subsections are ok in the results section too
 
@@ -57,13 +112,6 @@ megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
 soil_bulk <- read.csv("data/raw_data/soil_bulk_density.csv")
 ```
 
-
-
-
-# Discussion
-
-
-
 # Figures
 
 ```{r Nitrogen-Distrubution}
@@ -77,7 +125,7 @@ ggplot(megapit_cn, aes(x = nitrogenPercent)) +
   theme_minimal()
 ```
 
-**Figure 1:** *Fontinalis neomexicana* seems to have higher dry mass than other taxa in this site.
+**Figure 1:** Histogram demonstrates the distribution of nitrogen content %N in the root samples collected via the Delta Junction (DEJU) site. Values range from approximately 0.2% to 1.4%, with a right-skewed distribution indicating generally low nitrogen concentrations in roots.
 
 ```{r Carbon-vs-Nitrogen}
 # Plot 2: Carbon vs Nitrogen
@@ -90,7 +138,7 @@ ggplot(megapit_cn, aes(x = carbonPercent, y = nitrogenPercent)) +
   theme_minimal()
 ```
 
-**Figure 2:** *Fontinalis neomexicana* seems to have higher dry mass than other taxa in this site.
+**Figure 2:** Scatter plot of root percent carbon %C versus percent nitrogen %N for all sampled root fragments. A weak positive linear trend is visible, however high variability suggests only a somewhat modest association between carbon and nitrogen concentrations.
 
 ```{r C-N-Ratio}
 # Plot 3: C:N Ratio
@@ -103,7 +151,7 @@ ggplot(megapit_cn, aes(x = cn_ratio)) +
   theme_minimal()
 ```
 
-**Figure 3:** *Fontinalis neomexicana* seems to have higher dry mass than other taxa in this site.
+**Figure 3:** Histogram of calculated carbon-to-nitrogen C:N ratios across all root samples. Values vary drastically, with most between 25 and 90, reflecting substantial heterogeneity in root nutrient allocation and decomposition potential.
 
 ```{r Megapit-root-carbon-nitrogen-consumption-as-Nitrogen-vs-Carbon}
 # Plot for Megapit root carbon-nitrogen consumption as Nitrogen Vs Carbon
@@ -154,7 +202,7 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
                           TRUE) + 5)
 ```
 
-**Figure 4:** *Fontinalis neomexicana* seems to have higher dry mass than other taxa in this site.
+**Figure 4:**  Bar plot comparing mean percent carbon, %C blue, and percent nitrogen, %N red, across two root size categories ≤4 mm and >4 mm at the DEJU site. Coarse roots which are >4 mm, exhibit a higher average carbon concentration at 49.1% when compared to fine roots exhibiting 40%. In contrast, fine roots ≤4 mm display slightly higher nitrogen content at 0.7% relative to coarse roots displaying at 0.6%. Error bars represent ±1 standard error of the mean.
 
 ```{r Soil-Supporting-Root-Data, message=FALSE, warning=FALSE}
 
@@ -184,7 +232,7 @@ ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
   theme_minimal()
 ```
 
-**Figure 5:** The relationbship...#Summary: "DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density provides indirect insight into soil compaction and porosity, which may influence nutrient availability and root nutrient content."
+**Figure 5:** Scatter plot showing the relationship between soil bulk density and root nitrogen content in percent. Root nitrogen concentrations range from approximately 0.25% to 1.75%, with no clear trend across the bulk density gradient. The flat linear regression line indicates no meaningful association between soil compaction and root nitrogen levels within the sampled data.
 
 ```{r Soil-Bulk-Density-vs-Root-Carbon}
 # Plot 2: Soil Bulk Density vs. Root Carbon
@@ -198,7 +246,7 @@ ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
   theme_minimal()
 ```
 
-**Figure 5:** The relationbship...#Summary: "DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density provides indirect insight into soil compaction and porosity, which may influence nutrient availability and root nutrient content."
+**Figure 6:** Scatter plot shows the relationship between soil bulk density and root carbon content in percent. Root carbon concentrations range from approximately 5% to 55%, but no discernible pattern is observed across the bulk density gradient. The flat regression line and broad vertical scatter plots indicate no meaningful association between soil compaction and carbon concentration in root tissues within the sampled data.
 
 ```{r Soil-Bulk-Density-vs-Root-C-N-Ratio}
 # Plot 3: Soil Bulk Density vs. Root C:N Ratio
@@ -214,6 +262,28 @@ ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = cn_ratio)) +
   theme_minimal()
 ```
 
-**Figure 5:** The relationbship...#Summary: "DEJU lacks direct soil nitrogen or carbon chemistry data, bulk density provides indirect insight into soil compaction and porosity, which may influence nutrient availability and root nutrient content."
+**Figure 7:** Scatter plot demonstrates the relationship between soil bulk density and root carbon-to-nitrogen C:N ratio. Root C:N ratios range widely, with values typically between 25 and 100 but few outliers around 200 in a few cases. The regression line is flat, indicating no meaningful association between soil bulk density and root C:N ratio in the sampled data.
+
+
+# Discussion
+
+This study offers insights into belowground nutrient dynamics at the Delta Junction (DEJU) NEON site, especially concerning the elemental composition of root tissue and its potential association with the soil's physical conditions. Nitrogen and carbon content variations were observed across the root size classes between coarse and fine. There were no strong relationships between the bulk density and root chemical composition. These findings indicate that within the conditions sampled, bulk density is not a primary driver of %C, %N, or C:N ratios in plant roots at this site. 
+
+One explanation for the lack of associations could be the limited variation in bulk density within sampled megapits. Due to discontinuous permafrost, DEJU soils are cold, high in organic matter, and frequently exhibit cryoturbation. Conditions such as these could result in relatively homogenous soil structure across horizons, reducing the potential to detect fine-scale gradients in bulk density. Corrections for coarse fragments and inconsistencies in depth alignment between root and soil data may have introduced additional variability that masked subtle differences.
+
+Other environmental drivers, such as soil temperature, moisture availability, microbial biomass, and species-level root traits, have more substantial implications towards nutrient allocation than bulk density alone. Plant-microbe interactions, root age, and tissue longevity are commonly identified in shaping nutrient level concentrations within roots, especially in low nitrogen systems, particularly in boreal forests. Microbial community composition has been indicated to have variance systematically along environmental gradients even without visible plant community differences, pointing out the critical but often unseen role of microbial structures towards driving ecosystem-level nutrient dynamics [@zimmerman2012endophytes]. NEON dataset used in this study, however, did not include microbial or taxonomic information for root samples, which limits attributed abilities for variations to these important biotic factors 
+
+
+
+Observations that fine roots contain slightly more nitrogen and exhibit lower C:N ratios than coarse roots are consistent with well-established functional distinctions in the root systems. Fine roots are highly metabolically active, have shorter lifespans, and are primarily responsible for nutrient acquisition. Meanwhile, coarse roots serve structural and transport roles with lower nitrogen investments. A modest positive correlation between %C and %N across all root samples supports that these elements may co-accumulate in actively growing tissues. The strength of the relationship, however, was weak and not robust in a statistical manner.
+
+High variability and right-skewed nitrogen concentration distribution and C:N ratios reinforce substantial heterogeneity in root physiology condition, turnover, and decomposition status. Variation could reflect differences in species composition, developmental stages, or localised soil conditions not captured in the current metadata. NEON does not provide taxonomy resolution for root fragments collected from megapits, so it is not possible to assess interspecific variation, which is an important factor in trait-based and community-level ecological analyses 
+Critical limiting factors for this study are all root and soil samples originating from a singular megapit, limiting spatial replication and broader generalizability of results. Although the DEJU site is ecologically representative of the boreal forest permafrost transition zone, discoveries presented here should not be calculated for NEON sites in other domains or biomes without precaution. Additionally, relatively small sample sizes, particularly for nitrogen content, bottlenecks in statistical power, and reduced confidence in identifying subtle ecological patterns. 
+
+Regardless of these constraints, the study provides indispensable baseline insight towards root nutrient composition in a high-altitude, nutrient-deprived ecosystem. These findings confirm that intrinsic plan factors such as root size and function are more strongly associated with elemental composition than bulk soil physical structures. That being said, it has to be considered within at least the range of bulk density values encountered at this site. These results emphasise root trait variation and the importance of understanding nutrient cycling within cold climate ecosystems. They also point out the need for more spatially replicated, species-resolved studies to enhance inferencing at broader ecological scales. 
+
+# Acknowledgment 
+
+This study was made possible using chatGPT for the code, and publicly available ecological data provided by the National Ecological Observatory Network (NEON), a program sponsored by the National Science Foundation and operated under cooperative agreement by Battelle Memorial Institute. I thank Dr. Zimmerman, the University of San Francisco Department of Biology, and any teaching assistants for their support and guidance throughout this project. I also acknowledge the contributions of NEON field staff at the Delta Junction (DEJU) site for data collection and curation.
 
 # Sources Cited
