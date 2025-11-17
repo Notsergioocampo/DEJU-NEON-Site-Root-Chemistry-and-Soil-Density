@@ -1,0 +1,162 @@
+# NEON Site Configuration for Root-Soil Analysis
+# This file defines parameters for different NEON sites
+
+sites:
+  DEJU:
+    name: "Delta Junction"
+    domain: "D19"
+    description: "Boreal forest-tundra transition zone in interior Alaska"
+    latitude: 63.9
+    longitude: -145.7
+    climate: "Subarctic with discontinuous permafrost"
+    vegetation: "Black spruce, white spruce, dwarf birch, sedges"
+    soil_type: "Gelisols with cryoturbation"
+    
+    # Analysis parameters
+    depth_breaks:
+      - 0
+      - 10
+      - 25
+      - 50
+      - 100
+      - 200
+    
+    root_size_classes:
+      fine: "≤4mm"
+      coarse: ">4mm"
+    
+    # NEON data products
+    data_products:
+      root_chemistry: "DP1.10066.001"
+      soil_bulk_density: "DP1.00096.001"
+    
+    # Statistical thresholds
+    min_samples_per_class: 5
+    significance_level: 0.05
+    
+    # Ecological context
+    ecological_notes: >
+      Nutrient-limited soils with strong nitrogen limitation.
+      High C:N ratios typical of boreal forest ecosystems.
+      Permafrost affects soil structure and nutrient cycling.
+
+  HARV:
+    name: "Harvard Forest"
+    domain: "D01"
+    description: "Temperate deciduous forest in Massachusetts"
+    latitude: 42.5
+    longitude: -72.2
+    climate: "Temperate humid continental"
+    vegetation: "Northern hardwoods, red oak, white pine"
+    soil_type: "Inceptisols and Ultisols"
+    
+    depth_breaks:
+      - 0
+      - 15
+      - 30
+      - 60
+      - 100
+    
+    root_size_classes:
+      fine: "≤2mm"
+      coarse: ">2mm"
+    
+    data_products:
+      root_chemistry: "DP1.10066.001"
+      soil_bulk_density: "DP1.00096.001"
+    
+    min_samples_per_class: 10
+    significance_level: 0.05
+    
+    ecological_notes: >
+      Well-drained soils with moderate nutrient availability.
+      Seasonal temperature and moisture variations.
+      Long-term ecological research site with rich history.
+
+  BART:
+    name: "Bartlett Experimental Forest"
+    domain: "D01"
+    description: "Northern hardwood forest in New Hampshire"
+    latitude: 44.1
+    longitude: -71.3
+    climate: "Temperate continental with cold winters"
+    vegetation: "Sugar maple, American beech, yellow birch"
+    soil_type: "Spodosols and Inceptisols"
+    
+    depth_breaks:
+      - 0
+      - 10
+      - 20
+      - 40
+      - 80
+    
+    root_size_classes:
+      fine: "≤2mm"
+      coarse: ">2mm"
+    
+    data_products:
+      root_chemistry: "DP1.10066.001"
+      soil_bulk_density: "DP1.00096.001"
+    
+    min_samples_per_class: 8
+    significance_level: 0.05
+    
+    ecological_notes: >
+      Acidic soils with podzolization.
+      Strong seasonal patterns in soil chemistry.
+      Excellent for studying cold-climate root dynamics.
+
+  NIWO:
+    name: "Niwot Ridge"
+    domain: "D13"
+    description: "Alpine and subalpine ecosystem in Colorado"
+    latitude: 40.0
+    longitude: -105.5
+    climate: "Alpine with short growing season"
+    vegetation: "Alpine grasses, willows, conifers"
+    soil_type: "Cryalfs and Cryepts"
+    
+    depth_breaks:
+      - 0
+      - 5
+      - 15
+      - 30
+      - 60
+    
+    root_size_classes:
+      fine: "≤1mm"
+      coarse: ">1mm"
+    
+    data_products:
+      root_chemistry: "DP1.10066.001"
+      soil_bulk_density: "DP1.00096.001"
+    
+    min_samples_per_class: 3
+    significance_level: 0.05
+    
+    ecological_notes: >
+      Extreme environmental conditions with freeze-thaw cycles.
+      Short growing season limits root production.
+      Excellent for studying climate change impacts.
+
+# Default analysis parameters
+defaults:
+  depth_units: "cm"
+  mass_units: "g/cm³"
+  concentration_units: "percent"
+  
+  # Statistical defaults
+  confidence_level: 0.95
+  min_correlation_n: 5
+  max_models_if_small_n: 3
+  
+  # Plotting defaults
+  figure_width: 8
+  figure_height: 6
+  figure_dpi: 300
+  theme: "theme_bw"
+  
+  # NEON API defaults
+  api_timeout: 300
+  max_retries: 3
+  check_size: FALSE

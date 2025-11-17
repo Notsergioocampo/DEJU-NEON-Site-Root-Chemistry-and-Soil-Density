@@ -21,9 +21,23 @@ suppressPackageStartupMessages({
 
 # Source all R functions
 message("Loading R functions...")
+source("R/data_download.R")
 source("R/data_processing.R")
+source("R/analysis_models.R")
 source("R/visualization.R")
-source("R/analysis.R")
+source("R/main_analysis.R")
+
+# Load required packages
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(readr)
+  library(stringr)
+  library(purrr)
+  library(broom)
+  library(ggthemes)
+})
 
 # Set up output directories
 output_dirs <- c("data/processed", "figures", "output")
@@ -33,56 +47,40 @@ for (dir in output_dirs) {
   }
 }
 
-# Function to ensure Pandoc is available
-ensure_pandoc <- function() {
-  # Check if pandoc is available
+#' Check if Pandoc is available and working properly
+#'
+#' @return TRUE if pandoc is available and working, FALSE otherwise
+check_pandoc_available <- function() {
   pandoc_available <- tryCatch({
-    rmarkdown::find_pandoc()
-    TRUE
-  }, error = function(e) FALSE)
-  
-  if (!pandoc_available) {
-    message("Pandoc not found. Attempting to install...")
+    # First check if pandoc is available at all
+    if (!rmarkdown::pandoc_available()) {
+      return(FALSE)
+    }
     
-    # Try to install pandoc via R
-    tryCatch({
-      if (requireNamespace("installr", quietly = TRUE)) {
-        installr::install.pandoc()
-      } else {
-        # Try alternative installation methods
-        if (Sys.info()["sysname"] == "Darwin") {
-          system("brew install pandoc")
-        } else if (Sys.info()["sysname"] == "Linux") {
-          system("sudo apt-get install pandoc")
-        } else if (Sys.info()["sysname"] == "Windows") {
-          message("Please install Pandoc manually from: https://pandoc.org/installing.html")
-        }
-      }
-      
-      # Check again after installation attempt
-      Sys.sleep(5)  # Wait for installation to complete
-      pandoc_available <- tryCatch({
-        rmarkdown::find_pandoc()
-        TRUE
-      }, error = function(e) FALSE)
-    }, error = function(e) {
-      message("Automatic Pandoc installation failed.")
-      FALSE
-    })
-  }
+    # Then check if version is sufficient (>= 1.12.3)
+    pandoc_version <- rmarkdown::pandoc_version()
+    if (pandoc_version < "1.12.3") {
+      message(paste0("  ⚠️  Pandoc version ", pandoc_version, " is too old (need >= 1.12.3)"))
+      return(FALSE)
+    }
+    
+    TRUE
+  }, error = function(e) {
+    message("  ⚠️  Pandoc check failed: ", e$message)
+    FALSE
+  })
   
   if (!pandoc_available) {
-    stop(paste(
-      "Pandoc is required but not available. Please install Pandoc manually:\n",
-      "• macOS: brew install pandoc\n",
-      "• Ubuntu/Debian: sudo apt-get install pandoc\n", 
-      "• Windows: Download from https://pandoc.org/installing.html\n",
-      "• Or install R package: install.packages('installr'); installr::install.pandoc()"
-    ))
+    message("  💡  To install full research paper, try:")
+    message("     • macOS: brew install pandoc")
+    message("     • Ubuntu/Debian: sudo apt-get install pandoc")
+    message("     • Windows: https://pandoc.org/installing.html")
+  } else {
+    pandoc_version <- rmarkdown::pandoc_version()
+    message(paste0("  ✓ Pandoc ", pandoc_version, " detected and working"))
   }
   
-  message("✓ Pandoc is available")
-  return(TRUE)
+  return(pandoc_available)
 }
 
 # Main analysis function
@@ -190,23 +188,38 @@ run_complete_analysis <- function() {
   # Step 5: Create final research paper
   message("\nStep 5: Creating final research paper...")
   
-  create_final_report(
-    root_chemistry,
-    soil_bulk_density,
-    merged_data,
-    analysis_results,
-    plots
-  )
+  # Check if Pandoc is available first
+  pandoc_available <- check_pandoc_available()
+  
+  if (pandoc_available) {
+    message("  Rendering research paper...")
+    render_research_paper()
+    message("  ✓ Research paper rendered successfully")
+  } else {
+    warning("  ⚠️  Pandoc not available. Creating fallback summary instead.")
+    create_fallback_summary(
+      root_chemistry,
+      soil_bulk_density,
+      merged_data,
+      analysis_results,
+      plots
+    )
+  }
   
   message("\n=== Analysis Complete! ===\n")
   message("Results saved to:")
   message("  - Processed data: data/processed/")
   message("  - Figures: figures/")
   message("  - Summary tables: output/")
-  message("  - Research paper: output/project_report.html")
-  message("  - Research paper: output/project_report.docx")
-  if (file.exists("output/project_report.pdf")) {
-    message("  - Research paper: output/project_report.pdf")
+  if (pandoc_available && file.exists("output/research_paper.html")) {
+    message("  - Research paper: output/research_paper.html")
+    message("  - Research paper: output/research_paper.docx")
+    if (file.exists("output/research_paper.pdf")) {
+      message("  - Research paper: output/research_paper.pdf")
+    }
+  } else {
+    message("  - Summary report: output/project_report.html")
+    message("  - Summary report: output/project_report.docx")
   }
   
   return(list(
@@ -220,83 +233,80 @@ run_complete_analysis <- function() {
   ))
 }
 
-#' Create final research paper
+#' Render the research paper properly
 #'
-#' @param root_data Root chemistry data
-#' @param soil_data Soil bulk density data
-#' @param merged_data Merged data
-#' @param analysis_results Statistical analysis results
-#' @param plots List of plots
-create_final_report <- function(root_data, soil_data, merged_data, analysis_results, plots) {
+#' This function renders the research paper RMarkdown file to HTML and DOCX formats
+render_research_paper <- function() {
+  message("  Preparing research paper files...")
   
-  message("Creating research paper...")
-  
-  # Ensure Pandoc is available
-  ensure_pandoc()
+  # Check if the research paper template exists
+  research_paper_template <- "output/research_paper.Rmd"
+  if (!file.exists(research_paper_template)) {
+    warning("  Research paper template not found at ", research_paper_template)
+    return(FALSE)
+  }
   
   # Copy the research paper template to output directory
-  if (file.exists("output/research_paper.Rmd")) {
-    file.copy("output/research_paper.Rmd", "output/project_report.Rmd", overwrite = TRUE)
-  } else {
-    stop("Research paper template not found at output/research_paper.Rmd")
-  }
+  file.copy(research_paper_template, "output/research_paper_final.Rmd", overwrite = TRUE)
+  message("  ✓ Research paper template copied")
   
   # Copy references file if it exists
   if (file.exists("output/references.bib")) {
     file.copy("output/references.bib", "output/references_used.bib", overwrite = TRUE)
+    message("  ✓ References file copied")
   }
   
   # Copy ecology CSL file if it exists
   if (file.exists("ecology.csl")) {
     file.copy("ecology.csl", "output/ecology.csl", overwrite = TRUE)
+    message("  ✓ CSL style file copied")
   }
   
-  # Render the research paper in multiple formats
-  message("Rendering research paper...")
+  message("  Rendering research paper...")
   
+  # Render HTML version
+  message("    - HTML version...")
   tryCatch({
-    # HTML version
-    message("  - Generating HTML version...")
     rmarkdown::render(
-      input = "output/project_report.Rmd",
-      output_format = "html_document",
-      output_file = "project_report.html",
+      input = "output/research_paper_final.Rmd",
+      output_format = rmarkdown::html_document(
+        toc = TRUE,
+        toc_depth = 3,
+        number_sections = TRUE,
+        fig_caption = TRUE
+      ),
+      output_file = "research_paper.html",
       output_dir = "output",
-      clean = TRUE
+      quiet = TRUE
     )
-    
-    # Word version
-    message("  - Generating Word version...")
-    rmarkdown::render(
-      input = "output/project_report.Rmd",
-      output_format = "word_document",
-      output_file = "project_report.docx",
-      output_dir = "output",
-      clean = TRUE
-    )
-    
-    # Try PDF version (may fail if LaTeX not available)
-    message("  - Attempting PDF version...")
-    try({
-      rmarkdown::render(
-        input = "output/project_report.Rmd",
-        output_format = "pdf_document",
-        output_file = "project_report.pdf",
-        output_dir = "output",
-        clean = TRUE
-      )
-      message("  ✓ PDF version created successfully")
-    }, silent = TRUE)
-    
-    message("✓ Research paper rendered in multiple formats")
-    
+    message("    ✓ HTML research paper created")
   }, error = function(e) {
-    warning("Failed to render research paper: ", e$message)
-    warning("Creating fallback summary report...")
-    
-    # Create a simple fallback report
-    create_fallback_report(root_data, soil_data, merged_data, analysis_results, plots)
+    warning("Failed to render HTML research paper: ", e$message)
+    return(FALSE)
   })
+  
+  # Render Word version
+  message("    - Word version...")
+  tryCatch({
+    rmarkdown::render(
+      input = "output/research_paper_final.Rmd",
+      output_format = rmarkdown::word_document(
+        toc = TRUE,
+        toc_depth = 3,
+        number_sections = TRUE,
+        fig_caption = TRUE
+      ),
+      output_file = "research_paper.docx",
+      output_dir = "output",
+      quiet = TRUE
+    )
+    message("    ✓ Word research paper created")
+  }, error = function(e) {
+    warning("Failed to render Word research paper: ", e$message)
+  })
+  
+  message("  ✓ Research paper rendering complete")
+  return(TRUE)
 }
 
 #' Create fallback report if main rendering fails

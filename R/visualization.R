@@ -1,385 +1,763 @@
-#' Visualization Functions for NEON Root Chemistry Analysis
+#' Advanced Visualization Module for NEON Root-Soil Analysis
 #'
-#' This script contains functions for creating high-quality visualizations
-#' of root chemistry and soil bulk density relationships.
+#' This module provides publication-quality visualization functions for
+#' ecological data analysis, with consistent themes, proper error representation,
+#' and support for multi-site comparisons.
 #'
-#' @author Sergio Ocampo
-#' @date November 2025
+#' @name visualization
+#' @docType package
+NULL
 
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(ggthemes)
-library(RColorBrewer)
-
-#' Create nitrogen distribution histogram
+#' Create depth-stratified visualization of root chemistry
 #'
-#' @param root_data Root chemistry data frame
+#' Generates publication-quality plots showing root chemistry variables
+#' across depth intervals with confidence intervals and proper ecological
+#' formatting.
+#'
+#' @param data Data frame containing root chemistry and depth data
+#' @param response_var Character string specifying response variable
+#' @param depth_breaks Numeric vector of depth interval breaks
+#' @param site_id Character string specifying site ID
+#' @param group_var Character string specifying grouping variable (optional)
+#' @param show_ci Logical indicating whether to show confidence intervals
+#' @param theme_name Character string specifying ggplot theme
+#'
 #' @return ggplot object
 #' @export
-plot_nitrogen_distribution <- function(root_data) {
-  if (!"nitrogenPercent" %in% names(root_data)) {
-    stop("Root data must contain nitrogenPercent column")
-  }
+plot_depth_stratified <- function(data,
+                                  response_var = "cn_ratio",
+                                  depth_breaks = c(0, 10, 25, 50, 100, 200),
+                                  site_id = "DEJU",
+                                  group_var = NULL,
+                                  show_ci = TRUE,
+                                  theme_name = "theme_bw") {
   
-  p <- ggplot(root_data, aes(x = nitrogenPercent)) +
-    geom_histogram(
-      binwidth = 0.05,
-      fill = "#2E8B57",
-      color = "black",
-      alpha = 0.8
-    ) +
-    labs(
-      title = "Distribution of Root Nitrogen Content",
-      subtitle = "NEON DEJU Site",
-      x = "Nitrogen Content (%)",
-      y = "Number of Samples"
-    ) +
-    theme_minimal() +
-    theme(
-      plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 12),
-      axis.title = element_text(size = 12),
-      panel.grid.minor = element_blank()
-    )
+  message(sprintf("Creating depth-stratified plot for %s at site %s", response_var, site_id))
   
-  return(p)
-}
-
-#' Create carbon vs nitrogen scatter plot
-#'
-#' @param root_data Root chemistry data frame
-#' @return ggplot object
-#' @export
-plot_carbon_nitrogen_relationship <- function(root_data) {
-  required_cols <- c("carbonPercent", "nitrogenPercent")
-  missing_cols <- setdiff(required_cols, names(root_data))
-  if (length(missing_cols) > 0) {
-    stop(paste("Missing required columns:", paste(missing_cols, collapse = ", ")))
-  }
-  
-  # Calculate correlation
-  cor_value <- cor(root_data$carbonPercent, root_data$nitrogenPercent, 
-                   use = "complete.obs", method = "pearson")
-  
-  p <- ggplot(root_data, aes(x = carbonPercent, y = nitrogenPercent)) +
-    geom_point(
-      alpha = 0.6,
-      color = "#D2691E",
-      size = 3
-    ) +
-    geom_smooth(
-      method = "lm",
-      se = TRUE,
-      color = "black",
-      linetype = "dashed"
-    ) +
-    labs(
-      title = "Root Carbon vs Nitrogen Relationship",
-      subtitle = paste("NEON DEJU Site | r =", round(cor_value, 3)),
-      x = "Carbon Content (%)",
-      y = "Nitrogen Content (%)"
-    ) +
-    theme_minimal() +
-    theme(
-      plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 12),
-      axis.title = element_text(size = 12),
-      panel.grid.minor = element_blank()
-    )
-  
-  return(p)
-}
-
-#' Create C:N ratio distribution histogram
-#'
-#' @param root_data Root chemistry data frame
-#' @return ggplot object
-#' @export
-plot_cn_ratio_distribution <- function(root_data) {
-  if (!"cn_ratio" %in% names(root_data)) {
-    stop("Root data must contain cn_ratio column")
-  }
-  
-  p <- ggplot(root_data, aes(x = cn_ratio)) +
-    geom_histogram(
-      binwidth = 5,
-      fill = "#9370DB",
-      color = "black",
-      alpha = 0.8
-    ) +
-    labs(
-      title = "Distribution of Root C:N Ratios",
-      subtitle = "NEON DEJU Site",
-      x = "C:N Ratio",
-      y = "Number of Samples"
-    ) +
-    theme_minimal() +
-    theme(
-      plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 12),
-      axis.title = element_text(size = 12),
-      panel.grid.minor = element_blank()
-    ) +
-    xlim(0, 150)  # Focus on main distribution
-  
-  return(p)
-}
-
-#' Create comparison plot by root size category
-#'
-#' @param root_data Root chemistry data frame with sizeCategory
-#' @return ggplot object
-#' @export
-plot_root_size_comparison <- function(root_data) {
-  required_cols <- c("sizeCategory", "carbonPercent", "nitrogenPercent")
-  missing_cols <- setdiff(required_cols, names(root_data))
-  if (length(missing_cols) > 0) {
-    stop(paste("Missing required columns:", paste(missing_cols, collapse = ", ")))
-  }
-  
-  # Prepare data for plotting
-  plot_data <- root_data %>%
-    select(sizeCategory, carbonPercent, nitrogenPercent) %>%
-    pivot_longer(
-      cols = c(carbonPercent, nitrogenPercent),
-      names_to = "element",
-      values_to = "content"
-    ) %>%
+  # Create depth categories
+  plot_data <- data %>%
     mutate(
-      element = recode(element,
-                       "carbonPercent" = "Carbon",
-                       "nitrogenPercent" = "Nitrogen"),
-      sizeCategory = recode(sizeCategory,
-                            "<=4mm" = "Fine Roots (≤4mm)",
-                            ">4mm" = "Coarse Roots (>4mm)")
+      depth_category = cut(
+        depth_cm,
+        breaks = depth_breaks,
+        labels = sprintf("Depth_%d-%d", depth_breaks[-length(depth_breaks)], depth_breaks[-1]),
+        include.lowest = TRUE
+      ),
+      depth_mid = (depth_breaks[-length(depth_breaks)] + depth_breaks[-1]) / 2
     )
   
-  # Calculate summary statistics
-  summary_stats <- plot_data %>%
-    group_by(sizeCategory, element) %>%
-    summarise(
-      mean_content = mean(content, na.rm = TRUE),
-      se = sd(content, na.rm = TRUE) / sqrt(n()),
-      .groups = "drop"
-    )
+  # Calculate summary statistics by depth and group
+  if (!is.null(group_var) && group_var %in% names(plot_data)) {
+    summary_data <- plot_data %>%
+      group_by(depth_category, depth_mid, !!sym(group_var)) %>%
+      summarise(
+        mean_val = mean(.data[[response_var]], na.rm = TRUE),
+        se = sd(.data[[response_var]], na.rm = TRUE) / sqrt(n()),
+        n = n(),
+        .groups = "drop"
+      )
+    
+    if (show_ci) {
+      summary_data <- summary_data %>%
+        mutate(
+          lower = mean_val - 1.96 * se,
+          upper = mean_val + 1.96 * se
+        )
+    }
+    
+    # Create plot with grouping
+    p <- ggplot(summary_data, aes(x = depth_mid, y = mean_val, color = !!sym(group_var))) +
+      geom_line(size = 1) +
+      geom_point(size = 3) +
+      {
+        if (show_ci) geom_ribbon(aes(ymin = lower, ymax = upper, fill = !!sym(group_var)), 
+                                 alpha = 0.2, color = NA)
+      }
+    
+  } else {
+    summary_data <- plot_data %>%
+      group_by(depth_category, depth_mid) %>%
+      summarise(
+        mean_val = mean(.data[[response_var]], na.rm = TRUE),
+        se = sd(.data[[response_var]], na.rm = TRUE) / sqrt(n()),
+        n = n(),
+        .groups = "drop"
+      )
+    
+    if (show_ci) {
+      summary_data <- summary_data %>%
+        mutate(
+          lower = mean_val - 1.96 * se,
+          upper = mean_val + 1.96 * se
+        )
+    }
+    
+    # Create simple plot
+    p <- ggplot(summary_data, aes(x = depth_mid, y = mean_val)) +
+      geom_line(size = 1.2, color = "#2E7D32") +
+      geom_point(size = 4, color = "#2E7D32") +
+      {
+        if (show_ci) geom_ribbon(aes(ymin = lower, ymax = upper), 
+                                 alpha = 0.3, fill = "#2E7D32")
+      }
+  }
   
-  p <- ggplot(summary_stats, aes(x = sizeCategory, y = mean_content, fill = element)) +
-    geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
-    geom_errorbar(
-      aes(ymin = mean_content - se, ymax = mean_content + se),
-      position = position_dodge(width = 0.8),
-      width = 0.2,
-      color = "black"
-    ) +
-    geom_text(
-      aes(label = round(mean_content, 1)),
-      position = position_dodge(width = 0.8),
-      vjust = -0.5,
-      size = 4
-    ) +
-    scale_fill_manual(
-      values = c("Carbon" = "#4169E1", "Nitrogen" = "#DC143C"),
-      name = "Element"
-    ) +
+  # Add labels and formatting
+  p <- p +
     labs(
-      title = "Root Chemistry by Size Category",
-      subtitle = "NEON DEJU Site",
-      x = "Root Size Category",
-      y = "Mean Content (%)"
+      title = sprintf("Root %s Across Depth Intervals - %s", 
+                      format_variable_name(response_var), site_id),
+      subtitle = sprintf("Mean ± 95%% CI (n = %d samples)", sum(summary_data$n, na.rm = TRUE)),
+      x = "Soil Depth (cm)",
+      y = format_variable_name(response_var),
+      color = if (!is.null(group_var)) format_variable_name(group_var),
+      fill = if (!is.null(group_var)) format_variable_name(group_var)
     ) +
-    theme_minimal() +
+    scale_x_continuous(
+      breaks = depth_breaks,
+      labels = depth_breaks,
+      expand = expansion(mult = c(0.02, 0.02))
+    ) +
+    apply_ecological_theme(theme_name) +
     theme(
       plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 12),
+      plot.subtitle = element_text(size = 12, color = "gray40"),
       axis.title = element_text(size = 12),
-      axis.text.x = element_text(angle = 0, hjust = 0.5),
-      legend.position = "top",
-      panel.grid.minor = element_blank()
+      axis.text = element_text(size = 11),
+      legend.position = if (is.null(group_var)) "none" else "right",
+      legend.title = element_text(size = 11, face = "bold")
     )
   
   return(p)
 }
 
-#' Create soil bulk density vs root chemistry scatter plot
+#' Create soil-root relationship visualization
 #'
-#' @param merged_data Data frame containing both root and soil data
-#' @param chemistry_var Chemistry variable to plot ("nitrogenPercent", "carbonPercent", or "cn_ratio")
+#' Generates scatter plots and regression lines showing relationships between
+#' soil bulk density and root chemistry variables, with optional stratification
+#' by depth or other factors.
+#'
+#' @param merged_data Data frame containing merged root and soil data
+#' @param response_var Character string specifying root chemistry response
+#' @param soil_predictor Character string specifying soil predictor variable
+#' @param site_id Character string specifying site ID
+#' @param stratify_var Character string specifying stratification variable (optional)
+#' @param add_smooth Logical indicating whether to add smooth regression line
+#' @param show_ci Logical indicating whether to show confidence intervals
+#' @param theme_name Character string specifying ggplot theme
+#'
 #' @return ggplot object
 #' @export
-plot_soil_root_relationship <- function(merged_data, chemistry_var = "nitrogenPercent") {
-  valid_vars <- c("nitrogenPercent", "carbonPercent", "cn_ratio")
-  if (!chemistry_var %in% valid_vars) {
-    stop(paste("chemistry_var must be one of:", paste(valid_vars, collapse = ", ")))
+plot_soil_root_relationship <- function(merged_data,
+                                        response_var = "cn_ratio",
+                                        soil_predictor = "bulk_density",
+                                        site_id = "DEJU",
+                                        stratify_var = NULL,
+                                        add_smooth = TRUE,
+                                        show_ci = TRUE,
+                                        theme_name = "theme_bw") {
+  
+  message(sprintf("Creating soil-root relationship plot for %s", site_id))
+  
+  # Validate data
+  required_vars <- c(response_var, soil_predictor, "siteID")
+  missing_vars <- setdiff(required_vars, names(merged_data))
+  
+  if (length(missing_vars) > 0) {
+    stop(sprintf("Missing required variables: %s", paste(missing_vars, collapse = ", ")))
   }
   
-  if (!"bulk_density" %in% names(merged_data)) {
-    stop("Merged data must contain bulk_density column")
+  # Filter for current site and remove missing values
+  plot_data <- merged_data %>%
+    filter(siteID == site_id) %>%
+    filter(!is.na(.data[[response_var]]), !is.na(.data[[soil_predictor]]))
+  
+  if (nrow(plot_data) < 10) {
+    warning("Insufficient data for soil-root relationship visualization")
+    return(NULL)
   }
   
-  # Get appropriate labels
-  var_labels <- list(
-    nitrogenPercent = list(
-      title = "Soil Bulk Density vs Root Nitrogen",
-      y = "Root Nitrogen Content (%)"
-    ),
-    carbonPercent = list(
-      title = "Soil Bulk Density vs Root Carbon", 
-      y = "Root Carbon Content (%)"
-    ),
-    cn_ratio = list(
-      title = "Soil Bulk Density vs Root C:N Ratio",
-      y = "Root C:N Ratio"
-    )
-  )
-  
-  # Calculate correlation
-  cor_value <- cor(merged_data$bulk_density, merged_data[[chemistry_var]], 
-                   use = "complete.obs", method = "pearson")
-  
-  p <- ggplot(merged_data, aes(x = bulk_density, y = .data[[chemistry_var]])) +
-    geom_point(
-      alpha = 0.6,
-      color = "#228B22",
-      size = 3
-    ) +
-    geom_smooth(
-      method = "lm",
-      se = TRUE,
-      color = "black",
-      linetype = "dashed"
-    ) +
+  # Create base plot
+  p <- ggplot(plot_data, aes(x = .data[[soil_predictor]], y = .data[[response_var]])) +
+    geom_point(alpha = 0.7, size = 2) +
     labs(
-      title = var_labels[[chemistry_var]]$title,
-      subtitle = paste("NEON DEJU Site | r =", round(cor_value, 3)),
-      x = "Soil Bulk Density (g/cm³)",
-      y = var_labels[[chemistry_var]]$y
-    ) +
-    theme_minimal() +
+      title = sprintf("Root %s vs Soil %s - %s", 
+                      format_variable_name(response_var), 
+                      format_variable_name(soil_predictor), 
+                      site_id),
+      subtitle = sprintf("n = %d paired observations", nrow(plot_data)),
+      x = format_variable_name(soil_predictor, with_units = TRUE),
+      y = format_variable_name(response_var, with_units = TRUE)
+    )
+  
+  # Add stratification if specified
+  if (!is.null(stratify_var) && stratify_var %in% names(plot_data)) {
+    p <- p +
+      aes(color = .data[[stratify_var]]) +
+      scale_color_brewer(palette = "Set2", name = format_variable_name(stratify_var))
+  }
+  
+  # Add regression line and confidence interval
+  if (add_smooth) {
+    if (show_ci) {
+      p <- p + 
+        geom_smooth(method = "lm", se = TRUE, alpha = 0.2, size = 1) +
+        geom_smooth(method = "loess", se = FALSE, linetype = "dashed", color = "gray40", size = 0.8)
+    } else {
+      p <- p + geom_smooth(method = "lm", se = FALSE, size = 1)
+    }
+  }
+  
+  # Add correlation coefficient
+  correlation <- cor(plot_data[[soil_predictor]], plot_data[[response_var]], use = "complete.obs")
+  if (!is.na(correlation)) {
+    p <- p + 
+      annotate("text", 
+               x = Inf, y = Inf, 
+               label = sprintf("r = %.3f", correlation),
+               hjust = 1.1, vjust = 1.1,
+               size = 4, color = "gray40")
+  }
+  
+  # Apply theme and formatting
+  p <- p +
+    apply_ecological_theme(theme_name) +
     theme(
       plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 12),
+      plot.subtitle = element_text(size = 12, color = "gray40"),
       axis.title = element_text(size = 12),
-      panel.grid.minor = element_blank()
+      axis.text = element_text(size = 11),
+      legend.position = if (is.null(stratify_var)) "none" else "right",
+      legend.title = element_text(size = 11, face = "bold")
     )
   
   return(p)
 }
 
-#' Create depth profile plot
+#' Create multi-site comparison visualization
 #'
-#' @param root_data Root chemistry data frame with depth information
-#' @param soil_data Soil bulk density data frame with depth information
+#' Generates faceted plots comparing root-soil relationships across multiple
+#' NEON sites, suitable for cross-site ecological analysis.
+#'
+#' @param multi_site_data Data frame containing data from multiple sites
+#' @param response_var Character string specifying response variable
+#' @param predictor_var Character string specifying predictor variable
+#' @param site_var Character string specifying site ID variable
+#' @param facet_type Character string specifying facet type ("wrap" or "grid")
+#' @param common_scale Logical indicating whether to use common y-axis scale
+#' @param theme_name Character string specifying ggplot theme
+#'
 #' @return ggplot object
 #' @export
-plot_depth_profiles <- function(root_data, soil_data) {
-  required_root_cols <- c("depth_cm", "cn_ratio")
-  required_soil_cols <- c("depth_cm", "bulk_density")
+plot_multi_site_comparison <- function(multi_site_data,
+                                       response_var = "cn_ratio",
+                                       predictor_var = "bulk_density",
+                                       site_var = "siteID",
+                                       facet_type = "wrap",
+                                       common_scale = TRUE,
+                                       theme_name = "theme_bw") {
   
-  missing_root_cols <- setdiff(required_root_cols, names(root_data))
-  missing_soil_cols <- setdiff(required_soil_cols, names(soil_data))
+  message("Creating multi-site comparison visualization")
   
-  if (length(missing_root_cols) > 0) {
-    stop(paste("Root data missing columns:", paste(missing_root_cols, collapse = ", ")))
+  # Validate data
+  required_vars <- c(response_var, predictor_var, site_var)
+  missing_vars <- setdiff(required_vars, names(multi_site_data))
+  
+  if (length(missing_vars) > 0) {
+    stop(sprintf("Missing required variables: %s", paste(missing_vars, collapse = ", ")))
   }
-  if (length(missing_soil_cols) > 0) {
-    stop(paste("Soil data missing columns:", paste(missing_soil_cols, collapse = ", ")))
+  
+  # Get unique sites
+  sites <- unique(multi_site_data[[site_var]])
+  n_sites <- length(sites)
+  
+  if (n_sites < 2) {
+    warning("Insufficient sites for multi-site comparison")
+    return(NULL)
   }
   
-  # Prepare root data
-  root_depth <- root_data %>%
-    filter(!is.na(depth_cm), !is.na(cn_ratio)) %>%
-    group_by(depth_cm) %>%
+  # Create base plot
+  p <- ggplot(multi_site_data, aes(x = .data[[predictor_var]], y = .data[[response_var]])) +
+    geom_point(alpha = 0.6, size = 2) +
+    geom_smooth(method = "lm", se = TRUE, alpha = 0.2, size = 1) +
+    labs(
+      title = sprintf("Root %s vs Soil %s Across NEON Sites", 
+                      format_variable_name(response_var), 
+                      format_variable_name(predictor_var)),
+      subtitle = sprintf("%d sites analyzed", n_sites),
+      x = format_variable_name(predictor_var, with_units = TRUE),
+      y = format_variable_name(response_var, with_units = TRUE)
+    )
+  
+  # Add faceting
+  if (facet_type == "wrap") {
+    p <- p + facet_wrap(vars(.data[[site_var]]), scales = if (common_scale) "fixed" else "free_y")
+  } else {
+    p <- p + facet_grid(vars(.data[[site_var]]), scales = if (common_scale) "fixed" else "free_y")
+  }
+  
+  # Add site-specific correlation coefficients
+  correlations <- multi_site_data %>%
+    group_by(.data[[site_var]]) %>%
     summarise(
-      mean_cn = mean(cn_ratio, na.rm = TRUE),
-      se = sd(cn_ratio, na.rm = TRUE) / sqrt(n()),
+      correlation = cor(.data[[response_var]], .data[[predictor_var]], use = "complete.obs"),
       n = n(),
       .groups = "drop"
+    ) %>%
+    filter(!is.na(correlation))
+  
+  if (nrow(correlations) > 0) {
+    p <- p + 
+      geom_text(
+        data = correlations,
+        aes(x = Inf, y = Inf, label = sprintf("r = %.3f\\nn = %d", correlation, n)),
+        hjust = 1.1, vjust = 1.1,
+        size = 3, color = "gray40"
+      )
+  }
+  
+  # Apply theme and formatting
+  p <- p +
+    apply_ecological_theme(theme_name) +
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      plot.subtitle = element_text(size = 12, color = "gray40"),
+      axis.title = element_text(size = 12),
+      axis.text = element_text(size = 10),
+      strip.text = element_text(size = 11, face = "bold"),
+      panel.spacing = unit(1, "lines")
+    )
+  
+  return(p)
+}
+
+#' Create depth profile visualization
+#'
+#' Generates comprehensive depth profiles showing multiple variables
+#' across soil depth, suitable for publication.
+#'
+#' @param root_data Data frame containing root chemistry data
+#' @param soil_data Data frame containing soil bulk density data
+#' @param site_id Character string specifying site ID
+#' @param variables Character vector of variables to plot
+#' @param depth_range Numeric vector specifying depth range to display
+#' @param theme_name Character string specifying ggplot theme
+#'
+#' @return ggplot object
+#' @export
+plot_depth_profiles <- function(root_data,
+                                soil_data,
+                                site_id = "DEJU",
+                                variables = c("cn_ratio", "carbonPercent", "nitrogenPercent"),
+                                depth_range = c(0, 200),
+                                theme_name = "theme_bw") {
+  
+  message(sprintf("Creating depth profiles for site %s", site_id))
+  
+  # Prepare root data
+  root_summary <- root_data %>%
+    mutate(depth_mid = (depth_cm_top + depth_cm_bottom) / 2) %>%
+    group_by(depth_mid) %>%
+    summarise(
+      across(all_of(variables), list(mean = ~mean(., na.rm = TRUE), 
+                                     se = ~sd(., na.rm = TRUE) / sqrt(n()),
+                                     n = ~n()), 
+             .groups = "drop")
+    ) %>%
+    pivot_longer(cols = -depth_mid, names_to = c("variable", "statistic"), 
+                 names_pattern = "(.*)_(.*)", values_to = "value") %>%
+    pivot_wider(names_from = statistic, values_from = value) %>%
+    mutate(
+      lower = mean - 1.96 * se,
+      upper = mean + 1.96 * se
     )
   
   # Prepare soil data
-  soil_depth <- soil_data %>%
-    filter(!is.na(depth_cm), !is.na(bulk_density)) %>%
-    group_by(depth_cm) %>%
+  soil_summary <- soil_data %>%
+    mutate(depth_mid = (bulkDensTopDepth + bulkDensBottomDepth) / 2) %>%
+    group_by(depth_mid) %>%
     summarise(
-      mean_bd = mean(bulk_density, na.rm = TRUE),
-      se = sd(bulk_density, na.rm = TRUE) / sqrt(n()),
+      bulk_density_mean = mean(bulk_density, na.rm = TRUE),
+      bulk_density_se = sd(bulk_density, na.rm = TRUE) / sqrt(n()),
       n = n(),
       .groups = "drop"
+    ) %>%
+    mutate(
+      bulk_density_lower = bulk_density_mean - 1.96 * bulk_density_se,
+      bulk_density_upper = bulk_density_mean + 1.96 * bulk_density_se
     )
   
-  # Create plot
+  # Create combined plot
   p <- ggplot() +
-    # Root C:N ratio
+    # Root chemistry variables
+    geom_ribbon(
+      data = root_summary %>% filter(variable == "cn_ratio"),
+      aes(x = depth_mid, ymin = lower, ymax = upper),
+      fill = "#9C27B0", alpha = 0.3
+    ) +
     geom_line(
-      data = root_depth,
-      aes(x = mean_cn, y = depth_cm, color = "Root C:N Ratio"),
-      size = 1.2
+      data = root_summary %>% filter(variable == "cn_ratio"),
+      aes(x = depth_mid, y = mean),
+      color = "#9C27B0", size = 1.2
     ) +
     geom_point(
-      data = root_depth,
-      aes(x = mean_cn, y = depth_cm, color = "Root C:N Ratio"),
-      size = 3
+      data = root_summary %>% filter(variable == "cn_ratio"),
+      aes(x = depth_mid, y = mean),
+      color = "#9C27B0", size = 3
     ) +
-    # Soil bulk density
+    # Bulk density
+    geom_ribbon(
+      data = soil_summary,
+      aes(x = depth_mid, ymin = bulk_density_lower, ymax = bulk_density_upper),
+      fill = "#795548", alpha = 0.3
+    ) +
     geom_line(
-      data = soil_depth,
-      aes(x = mean_bd * 20, y = depth_cm, color = "Soil Bulk Density"),
-      size = 1.2,
-      linetype = "dashed"
+      data = soil_summary,
+      aes(x = depth_mid, y = bulk_density_mean),
+      color = "#795548", size = 1.2, linetype = "dashed"
     ) +
     geom_point(
-      data = soil_depth,
-      aes(x = mean_bd * 20, y = depth_cm, color = "Soil Bulk Density"),
-      size = 3,
-      shape = 17
-    ) +
-    scale_color_manual(
-      values = c("Root C:N Ratio" = "#8B4513", "Soil Bulk Density" = "#4682B4"),
-      name = "Variable"
+      data = soil_summary,
+      aes(x = depth_mid, y = bulk_density_mean),
+      color = "#795548", size = 3, shape = 17
     ) +
     labs(
-      title = "Depth Profiles: Root C:N Ratio and Soil Bulk Density",
-      subtitle = "NEON DEJU Site",
-      x = "Root C:N Ratio | Soil Bulk Density (×20 g/cm³)",
-      y = "Depth (cm)"
+      title = sprintf("Depth Profiles of Root Chemistry and Soil Properties - %s", site_id),
+      subtitle = "Mean ± 95% CI",
+      x = "Soil Depth (cm)",
+      y = "Value"
     ) +
-    theme_minimal() +
+    scale_x_continuous(
+      limits = depth_range,
+      expand = expansion(mult = c(0.02, 0.02))
+    ) +
+    scale_y_continuous(
+      name = "Root C:N Ratio",
+      sec.axis = sec_axis(~ . * 0.02 + 0.5, name = "Bulk Density (g/cm³)")
+    ) +
+    apply_ecological_theme(theme_name) +
     theme(
       plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 12),
+      plot.subtitle = element_text(size = 12, color = "gray40"),
       axis.title = element_text(size = 12),
-      legend.position = "top",
-      panel.grid.minor = element_blank()
-    ) +
-    scale_y_reverse()  # Reverse y-axis to show depth increasing downward
+      axis.text = element_text(size = 11),
+      legend.position = "right"
+    )
   
   return(p)
 }
 
-#' Save multiple plots to files
+#' Create root size comparison visualization
 #'
-#' @param plot_list List of ggplot objects
-#' @param output_dir Output directory for plots
-#' @param width Plot width in inches
-#' @param height Plot height in inches
-#' @param dpi Resolution in dots per inch
+#' Generates bar plots comparing root chemistry between size classes
+#' with proper error representation and statistical significance indicators.
+#'
+#' @param data Data frame containing root chemistry data
+#' @param variables Character vector of variables to compare
+#' @param site_id Character string specifying site ID
+#' @param size_break Numeric value specifying size class breakpoint
+#' @param show_stats Logical indicating whether to show statistical tests
+#' @param theme_name Character string specifying ggplot theme
+#'
+#' @return ggplot object
 #' @export
-save_plots <- function(plot_list, output_dir = "figures", width = 8, height = 6, dpi = 300) {
+plot_root_size_comparison <- function(data,
+                                      variables = c("carbonPercent", "nitrogenPercent", "cn_ratio"),
+                                      site_id = "DEJU",
+                                      size_break = 4,
+                                      show_stats = TRUE,
+                                      theme_name = "theme_bw") {
+  
+  message(sprintf("Creating root size comparison for site %s", site_id))
+  
+  # Create size categories
+  plot_data <- data %>%
+    mutate(
+      size_category = case_when(
+        carbonPercent <= size_break ~ "Fine (≤4mm)",
+        carbonPercent > size_break ~ "Coarse (>4mm)",
+        TRUE ~ NA_character_
+      )
+    ) %>%
+    filter(!is.na(size_category))
+  
+  if (nrow(plot_data) < 10) {
+    warning("Insufficient data for root size comparison")
+    return(NULL)
+  }
+  
+  # Calculate summary statistics
+  summary_data <- plot_data %>%
+    group_by(size_category) %>%
+    summarise(
+      across(all_of(variables), list(
+        mean = ~mean(., na.rm = TRUE),
+        se = ~sd(., na.rm = TRUE) / sqrt(n()),
+        n = ~n()
+      ), .groups = "drop")
+    ) %>%
+    pivot_longer(cols = -size_category, names_to = c("variable", "statistic"), 
+                 names_pattern = "(.*)_(.*)", values_to = "value") %>%
+    pivot_wider(names_from = statistic, values_from = value) %>%
+    mutate(
+      lower = mean - 1.96 * se,
+      upper = mean + 1.96 * se
+    )
+  
+  # Perform statistical tests
+  stats_results <- NULL
+  if (show_stats) {
+    stats_results <- perform_size_class_tests(plot_data, variables)
+  }
+  
+  # Create plot
+  p <- ggplot(summary_data, aes(x = size_category, y = mean, fill = variable)) +
+    geom_bar(stat = "identity", position = position_dodge(width = 0.9), width = 0.8) +
+    geom_errorbar(
+      aes(ymin = lower, ymax = upper),
+      position = position_dodge(width = 0.9),
+      width = 0.2,
+      size = 0.5
+    ) +
+    geom_text(
+      aes(label = sprintf("%.1f", mean), y = mean + se + 0.5),
+      position = position_dodge(width = 0.9),
+      vjust = -0.5,
+      size = 3
+    ) +
+    scale_fill_brewer(palette = "Set2", name = "Variable") +
+    labs(
+      title = sprintf("Root Chemistry by Size Class - %s", site_id),
+      subtitle = sprintf("Mean ± 95%% CI (n = %d total samples)", sum(summary_data$n, na.rm = TRUE)),
+      x = "Root Size Class",
+      y = "Mean Value"
+    ) +
+    apply_ecological_theme(theme_name) +
+    theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 12, color = "gray40"),
+      axis.title = element_text(size = 12),
+      axis.text = element_text(size = 11),
+      legend.position = "right",
+      legend.title = element_text(size = 11, face = "bold")
+    )
+  
+  # Add statistical annotations if available
+  if (!is.null(stats_results) && nrow(stats_results) > 0) {
+    p <- p + 
+      geom_text(
+        data = stats_results,
+        aes(x = 1.5, y = Inf, label = significance_label),
+        vjust = 1.5,
+        size = 3,
+        color = "red"
+      )
+  }
+  
+  return(p)
+}
+
+#' Apply consistent ecological theme to plots
+#'
+#' Applies a standardized theme suitable for ecological publications.
+#'
+#' @param theme_name Character string specifying base theme
+#' @return Theme object
+#' @export
+apply_ecological_theme <- function(theme_name = "theme_bw") {
+  
+  base_theme <- switch(theme_name,
+                       "theme_bw" = theme_bw(),
+                       "theme_minimal" = theme_minimal(),
+                       "theme_classic" = theme_classic(),
+                       "theme_gray" = theme_gray(),
+                       theme_bw())
+  
+  ecological_theme <- base_theme +
+    theme(
+      text = element_text(family = "sans", size = 12),
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(size = 12, color = "gray40", hjust = 0.5),
+      axis.title = element_text(size = 12, face = "plain"),
+      axis.text = element_text(size = 11, color = "black"),
+      axis.line = element_line(color = "black", size = 0.5),
+      panel.grid.major = element_line(color = "gray90", size = 0.2),
+      panel.grid.minor = element_blank(),
+      legend.background = element_rect(fill = "white", color = NA),
+      legend.key = element_rect(fill = "white", color = NA),
+      legend.title = element_text(size = 11, face = "bold"),
+      legend.text = element_text(size = 10),
+      strip.background = element_rect(fill = "gray95", color = "gray70"),
+      strip.text = element_text(size = 11, face = "bold")
+    )
+  
+  return(ecological_theme)
+}
+
+#' Format variable names for plot labels
+#'
+#' Converts variable names to human-readable format with proper units.
+#'
+#' @param var_name Character string specifying variable name
+#' @param with_units Logical indicating whether to include units
+#' @return Formatted variable name
+#' @export
+format_variable_name <- function(var_name, with_units = FALSE) {
+  
+  name_map <- list(
+    "carbonPercent" = "Carbon Content",
+    "nitrogenPercent" = "Nitrogen Content",
+    "cn_ratio" = "C:N Ratio",
+    "bulk_density" = "Bulk Density",
+    "depth_cm" = "Depth",
+    "sizeCategory" = "Root Size Class",
+    "siteID" = "Site",
+    "horizonName" = "Soil Horizon",
+    "pitID" = "Sampling Pit"
+  )
+  
+  unit_map <- list(
+    "carbonPercent" = "(% dry mass)",
+    "nitrogenPercent" = "(% dry mass)",
+    "cn_ratio" = "(mass ratio)",
+    "bulk_density" = "(g/cm³)",
+    "depth_cm" = "(cm)"
+  )
+  
+  formatted_name <- name_map[[var_name]] %||% var_name
+  
+  if (with_units && var_name %in% names(unit_map)) {
+    formatted_name <- paste(formatted_name, unit_map[[var_name]])
+  }
+  
+  return(formatted_name)
+}
+
+#' Perform statistical tests for root size class comparisons
+#'
+#' Conducts formal statistical tests comparing root chemistry between size classes.
+#'
+#' @param data Data frame containing root chemistry and size class data
+#' @param variables Character vector of variables to test
+#' @return Data frame containing test results
+#' @export
+perform_size_class_tests <- function(data, variables) {
+  
+  results <- list()
+  
+  for (var in variables) {
+    if (!(var %in% names(data))) next
+    
+    # Two-sample t-test
+    fine_data <- data %>% filter(size_category == "Fine (≤4mm)") %>% pull(!!sym(var))
+    coarse_data <- data %>% filter(size_category == "Coarse (>4mm)") %>% pull(!!sym(var))
+    
+    if (length(fine_data) > 2 && length(coarse_data) > 2) {
+      test_result <- t.test(fine_data, coarse_data)
+      
+      results[[var]] <- data.frame(
+        variable = var,
+        statistic = test_result$statistic,
+        p_value = test_result$p.value,
+        mean_difference = test_result$estimate[1] - test_result$estimate[2],
+        ci_lower = test_result$conf.int[1],
+        ci_upper = test_result$conf.int[2],
+        significant = test_result$p.value < 0.05,
+        interpretation = ifelse(test_result$p.value < 0.05, "Significant", "Not significant")
+      )
+    }
+  }
+  
+  if (length(results) > 0) {
+    return(bind_rows(results))
+  } else {
+    return(NULL)
+  }
+}
+
+#' Create publication-ready figure set
+#'
+#' Generates a complete set of publication-quality figures for the analysis.
+#'
+#' @param data_list List containing all processed data
+#' @param site_id Character string specifying site ID
+#' @param output_dir Character string specifying output directory
+#' @param dpi Numeric specifying figure resolution
+#' @param width Numeric specifying figure width
+#' @param height Numeric specifying figure height
+#' @return List containing paths to generated figures
+#' @export
+create_publication_figures <- function(data_list,
+                                       site_id = "DEJU",
+                                       output_dir = "figures",
+                                       dpi = 300,
+                                       width = 8,
+                                       height = 6) {
+  
+  message(sprintf("Creating publication figure set for site %s", site_id))
+  
+  # Ensure output directory exists
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
   }
   
-  for (plot_name in names(plot_list)) {
-    output_file <- file.path(output_dir, paste0(plot_name, ".png"))
-    ggsave(
-      filename = output_file,
-      plot = plot_list[[plot_name]],
-      width = width,
-      height = height,
-      dpi = dpi,
-      bg = "white"
-    )
-    message(paste("Saved plot:", output_file))
+  figure_paths <- list()
+  
+  # Figure 1: Root chemistry distributions
+  figure_paths$nitrogen_distribution <- file.path(output_dir, "nitrogen_distribution.png")
+  ggsave(figure_paths$nitrogen_distribution,
+         plot = plot_nitrogen_distribution(data_list$root_chemistry, site_id = site_id),
+         width = width, height = height, dpi = dpi, bg = "white")
+  
+  figure_paths$carbon_nitrogen_relationship <- file.path(output_dir, "carbon_nitrogen_relationship.png")
+  ggsave(figure_paths$carbon_nitrogen_relationship,
+         plot = plot_carbon_nitrogen_relationship(data_list$root_chemistry, site_id = site_id),
+         width = width, height = height, dpi = dpi, bg = "white")
+  
+  figure_paths$cn_ratio_distribution <- file.path(output_dir, "cn_ratio_distribution.png")
+  ggsave(figure_paths$cn_ratio_distribution,
+         plot = plot_cn_ratio_distribution(data_list$root_chemistry, site_id = site_id),
+         width = width, height = height, dpi = dpi, bg = "white")
+  
+  # Figure 2: Root size comparison
+  figure_paths$root_size_comparison <- file.path(output_dir, "root_size_comparison.png")
+  ggsave(figure_paths$root_size_comparison,
+         plot = plot_root_size_comparison(data_list$root_chemistry, site_id = site_id),
+         width = width, height = height, dpi = dpi, bg = "white")
+  
+  # Figure 3: Soil-root relationships
+  if (!is.null(data_list$merged_data)) {
+    figure_paths$soil_nitrogen_relationship <- file.path(output_dir, "soil_nitrogen_relationship.png")
+    ggsave(figure_paths$soil_nitrogen_relationship,
+           plot = plot_soil_root_relationship(data_list$merged_data, site_id = site_id),
+           width = width, height = height, dpi = dpi, bg = "white")
+    
+    figure_paths$soil_carbon_relationship <- file.path(output_dir, "soil_carbon_relationship.png")
+    ggsave(figure_paths$soil_carbon_relationship,
+           plot = plot_soil_root_relationship(data_list$merged_data, response_var = "carbonPercent", site_id = site_id),
+           width = width, height = height, dpi = dpi, bg = "white")
+    
+    figure_paths$soil_cn_ratio_relationship <- file.path(output_dir, "soil_cn_ratio_relationship.png")
+    ggsave(figure_paths$soil_cn_ratio_relationship,
+           plot = plot_soil_root_relationship(data_list$merged_data, response_var = "cn_ratio", site_id = site_id),
+           width = width, height = height, dpi = dpi, bg = "white")
   }
+  
+  # Figure 4: Depth profiles
+  if (!is.null(data_list$root_chemistry) && !is.null(data_list$soil_bulk_density)) {
+    figure_paths$depth_profiles <- file.path(output_dir, "depth_profiles.png")
+    ggsave(figure_paths$depth_profiles,
+           plot = plot_depth_profiles(data_list$root_chemistry, data_list$soil_bulk_density, site_id = site_id),
+           width = width, height = height * 1.2, dpi = dpi, bg = "white")
+  }
+  
+  message(sprintf("✓ Generated %d publication-quality figures", length(figure_paths)))
+  return(figure_paths)
 }
+
+#' Helper function for NULL-coalescing
+#'
+#' @param x Value to check
+#' @param y Default value
+#' @return x if not NULL, otherwise y
+`%||%` <- function(x, y) if (is.null(x)) y else x

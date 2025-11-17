@@ -1,0 +1,525 @@
+---
+title: "From NEON API to Root-Soil Interaction Analysis: A Complete Workflow"
+author: "Sergio Ocampo"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{NEON Root-Soil Analysis Workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 8,
+  fig.height = 6,
+  fig.align = 'center',
+  out.width = '80%',
+  dpi = 300
+)
+
+library(dejuNeonRootSoil)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+```
+
+# Introduction
+
+This vignette demonstrates how to use the **dejuNeonRootSoil** package to analyze root chemistry and soil bulk density relationships using NEON (National Ecological Observatory Network) data. The package provides a complete workflow from data acquisition through publication-ready results.
+
+## What You'll Learn
+
+- How to download NEON data for any terrestrial site
+- How to process and clean root chemistry and soil bulk density data
+- How to perform sophisticated statistical analyses including mixed models
+- How to create publication-quality visualizations
+- How to adapt the analysis for different NEON sites
+- How to interpret ecological results
+
+## Required Data Products
+
+This analysis uses two NEON data products:
+
+1. **DP1.10066.001** - Root biomass and chemistry (megapit protocol)
+2. **DP1.00096.001** - Soil physical and chemical properties
+
+# Quick Start: DEJU Site Analysis
+
+## Step 1: Load the Package
+
+```{r load-package}
+# Load the analysis framework
+library(dejuNeonRootSoil)
+
+# Check package version and dependencies
+packageVersion("dejuNeonRootSoil")
+```
+
+## Step 2: Run Complete Analysis
+
+The simplest way to analyze a NEON site is using the main pipeline function:
+
+```{r run-analysis, eval=FALSE}
+# Run complete analysis for Delta Junction (DEJU) site
+results <- run_deju_pipeline(
+  site_id = "DEJU",
+  data_dir = "data/raw_data",
+  output_dir = "output",
+  download_data = FALSE,  # Set to TRUE to download fresh data
+  run_models = TRUE,
+  create_figures = TRUE,
+  render_report = TRUE
+)
+```
+
+## Step 3: Explore Results
+
+```{r explore-results}
+# The analysis produces a comprehensive results object
+str(results, max.level = 2)
+
+# Access processed data
+head(results$processed_data$root_chemistry)
+
+# View statistical analysis results
+names(results$analysis_results)
+
+# Check generated figures
+results$figure_paths
+```
+
+# Detailed Workflow
+
+## Data Acquisition
+
+### Option 1: Use Existing Data
+If you already have NEON data files, place them in your data directory:
+
+```{r data-structure}
+# Expected file structure:
+# data/raw_data/
+#   ├── megapit_carbon_nitrogen.csv
+#   ├── megapit_root_samples.csv
+#   ├── soil_bulk_density.csv
+#   └── soil_chemistry.csv
+```
+
+### Option 2: Download Fresh Data
+To download the latest data from NEON:
+
+```{r download-data, eval=FALSE}
+# Download data for a specific site and time period
+data_files <- download_neon_data(
+  site_id = "DEJU",
+  start_date = "2015-01-01",
+  end_date = "2023-12-31",
+  data_dir = "data/raw_data",
+  overwrite = TRUE
+)
+
+# Check what was downloaded
+print(data_files)
+```
+
+## Site Configuration
+
+Each NEON site has unique characteristics. The package includes pre-configured settings:
+
+```{r site-config}
+# Load configuration for different sites
+deju_config <- load_site_config("DEJU")
+harv_config <- load_site_config("HARV")
+bart_config <- load_site_config("BART")
+
+# Compare depth breaks across sites
+list(
+  DEJU = deju_config$depth_breaks,
+  HARV = harv_config$depth_breaks,
+  BART = bart_config$depth_breaks
+)
+```
+
+## Data Processing
+
+### Process Individual Components
+
+```{r process-components}
+# Process root chemistry data
+root_data <- process_root_chemistry(
+  "data/raw_data/megapit_carbon_nitrogen.csv",
+  site_id = "DEJU",
+  config = deju_config
+)
+
+# Process soil bulk density data
+soil_data <- process_soil_bulk_density(
+  "data/raw_data/soil_bulk_density.csv",
+  site_id = "DEJU",
+  config = deju_config
+)
+
+# Merge datasets
+merged_data <- merge_root_soil_data(root_data, soil_data, "DEJU", deju_config)
+```
+
+### Validate Data Quality
+
+```{r validate-data}
+# Check data quality
+validation <- validate_root_chemistry(root_data, "DEJU")
+print(validation)
+
+# Get comprehensive summary
+summary_stats <- create_comprehensive_summary(
+  list(root_chemistry = root_data, soil_bulk_density = soil_data),
+  "DEJU"
+)
+print(summary_stats)
+```
+
+## Statistical Analysis
+
+### Mixed Models for Hierarchical Data
+
+Root-soil data often has hierarchical structure (samples within pits). Mixed models account for this:
+
+```{r mixed-models}
+# Fit linear mixed model for C:N ratio
+model_results <- fit_root_chemistry_model(
+  data = merged_data,
+  response_var = "cn_ratio",
+  fixed_effects = c("depth_cm", "bulk_density"),
+  random_effects = c("pitID", "horizonName"),
+  site_id = "DEJU",
+  model_type = "lmer"
+)
+
+# Examine model results
+print(model_results$summary$fixed_effects)
+print(model_results$diagnostics)
+```
+
+### Depth-Stratified Analysis
+
+Analyze how root chemistry changes with soil depth:
+
+```{r depth-analysis}
+depth_results <- analyze_depth_stratified(
+  data = root_data,
+  response_vars = c("carbonPercent", "nitrogenPercent", "cn_ratio"),
+  site_id = "DEJU",
+  config = deju_config
+)
+
+# View depth trends
+depth_results$depth_stratified$cn_ratio$summary_stats
+```
+
+### Soil-Root Relationship Models
+
+Examine relationships between soil properties and root chemistry:
+
+```{r soil-root-models}
+soil_models <- fit_soil_root_models(
+  merged_data = merged_data,
+  response_var = "cn_ratio",
+  soil_predictors = c("bulk_density", "depth_cm"),
+  site_id = "DEJU"
+)
+
+# Compare different model formulations
+print(soil_models$model_comparison)
+```
+
+## Visualization
+
+### Publication-Quality Figures
+
+Create a complete set of publication-ready figures:
+
+```{r create-figures, fig.height=4}
+figure_paths <- create_publication_figures(
+  list(root_chemistry = root_data, soil_bulk_density = soil_data, merged_data = merged_data),
+  site_id = "DEJU",
+  output_dir = "figures",
+  dpi = 300
+)
+
+# Display one of the generated figures
+knitr::include_graphics("figures/depth_profiles.png")
+```
+
+### Custom Visualizations
+
+Create specific visualizations for your research questions:
+
+```{r custom-plots}
+# Depth-stratified plot with confidence intervals
+depth_plot <- plot_depth_stratified(
+  root_data,
+  response_var = "cn_ratio",
+  site_id = "DEJU",
+  show_ci = TRUE
+)
+print(depth_plot)
+
+# Soil-root relationship with stratification
+soil_plot <- plot_soil_root_relationship(
+  merged_data,
+  response_var = "cn_ratio",
+  soil_predictor = "bulk_density",
+  site_id = "DEJU",
+  stratify_var = "depth_category",
+  add_smooth = TRUE
+)
+print(soil_plot)
+```
+
+# Multi-Site Analysis
+
+## Compare Across NEON Sites
+
+Analyze multiple sites simultaneously:
+
+```{r multi-site, eval=FALSE}
+# Run analysis for multiple sites
+multi_results <- run_multi_site_analysis(
+  site_ids = c("DEJU", "HARV", "BART"),
+  output_dir = "multi_site_output",
+  parallel = FALSE
+)
+
+# Access individual site results
+multi_results$individual_results$DEJU
+multi_results$individual_results$HARV
+
+# Access comparative analysis
+multi_results$comparative_results
+```
+
+## Create Multi-Site Visualizations
+
+```{r multi-site-plots, eval=FALSE}
+# Extract data from all sites
+all_sites_data <- map_df(names(multi_results$individual_results), function(site_id) {
+  multi_results$individual_results[[site_id]]$processed_data$root_chemistry %>%
+    mutate(siteID = site_id)
+})
+
+# Create comparative visualization
+comparison_plot <- plot_multi_site_comparison(
+  all_sites_data,
+  response_var = "cn_ratio",
+  predictor_var = "bulk_density",
+  site_var = "siteID"
+)
+print(comparison_plot)
+```
+
+# Customization and Extension
+
+## Custom Site Configuration
+
+Create custom settings for your analysis:
+
+```{r custom-config}
+# Define custom configuration
+custom_config <- list(
+  site_id = "DEJU",
+  name = "Delta Junction Custom",
+  depth_breaks = c(0, 5, 15, 30, 60, 100, 200),
+  root_size_classes = list(
+    fine = "≤2mm",
+    coarse = ">2mm"
+  ),
+  significance_level = 0.01,
+  min_samples_per_class = 10
+)
+
+# Use custom configuration
+results <- run_deju_pipeline(
+  site_id = "DEJU",
+  config = custom_config
+)
+```
+
+## Add Custom Statistical Models
+
+Extend the framework with your own models:
+
+```{r custom-models}
+# Custom model function
+my_custom_model <- function(data, site_id) {
+  # Your custom modeling code here
+  model <- lm(cn_ratio ~ poly(depth_cm, 2) + bulk_density, data = data)
+  return(list(model = model, summary = summary(model)))
+}
+
+# Integrate with existing pipeline
+custom_results <- my_custom_model(merged_data, "DEJU")
+```
+
+## Custom Visualizations
+
+Create specialized plots for your research:
+
+```{r custom-viz}
+# Custom depth profile
+custom_depth_plot <- ggplot(merged_data, aes(x = depth_cm, y = cn_ratio)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "gam", formula = y ~ s(x, k = 5), se = TRUE) +
+  facet_wrap(~horizonName) +
+  labs(title = "Custom Depth Profile by Horizon",
+       x = "Soil Depth (cm)",
+       y = "Root C:N Ratio") +
+  theme_minimal()
+
+print(custom_depth_plot)
+```
+
+# Interpreting Results
+
+## Ecological Interpretation
+
+### C:N Ratio Patterns
+- **High C:N ratios (>50)**: Indicate nitrogen limitation, typical of boreal forests
+- **Low C:N ratios (<30)**: Suggest more available nitrogen, common in temperate systems
+- **Depth trends**: Often increase with depth due to decomposition and root aging
+
+### Soil Bulk Density Effects
+- **High bulk density (>1.5 g/cm³)**: May indicate compaction, limiting root growth
+- **Low bulk density (<0.8 g/cm³)**: Suggests organic-rich, well-structured soils
+- **Relationships**: Often weak or absent, suggesting other factors dominate root chemistry
+
+### Size Class Differences
+- **Fine roots**: Higher nitrogen content, lower C:N ratios (metabolic activity)
+- **Coarse roots**: Higher carbon content, structural role, slower turnover
+
+## Statistical Interpretation
+
+### Mixed Model Results
+- **Fixed effects**: Population-level patterns (depth, bulk density)
+- **Random effects**: Site-specific variation (pits, horizons)
+- **Model selection**: Use AIC/BIC for comparing model formulations
+
+### Effect Sizes
+- **Cohen's d interpretation**:
+  - <0.2: Negligible effect
+  - 0.2-0.5: Small effect
+  - 0.5-0.8: Medium effect
+  - >0.8: Large effect
+
+# Troubleshooting
+
+## Common Issues
+
+### Insufficient Data
+```{r insufficient-data}
+# Check sample sizes
+nrow(root_data)
+table(root_data$sizeCategory)
+
+# Consider aggregating categories or using different sites
+```
+
+### Model Convergence Issues
+```{r convergence}
+# Try simpler models first
+simple_model <- fit_root_chemistry_model(
+  data = merged_data,
+  response_var = "cn_ratio",
+  fixed_effects = c("depth_cm"),  # Start with one predictor
+  random_effects = c("pitID"),    # Minimal random structure
+  site_id = "DEJU"
+)
+```
+
+### Missing Variables
+```{r missing-vars}
+# Check available variables
+names(merged_data)
+
+# Handle missing data appropriately
+complete_cases <- merged_data %>%
+  filter(!is.na(cn_ratio), !is.na(bulk_density), !is.na(depth_cm))
+```
+
+## Performance Optimization
+
+### For Large Datasets
+```{r performance}
+# Process data in chunks
+# Use parallel processing for multiple sites
+# Reduce figure resolution for initial exploration
+```
+
+### Memory Management
+```{r memory}
+# Clear large objects
+rm(large_object)
+gc()
+
+# Process components separately rather than keeping everything in memory
+```
+
+# Best Practices
+
+## Reproducible Research
+
+1. **Version Control**: Always specify package versions
+2. **Random Seeds**: Set seeds for reproducible results
+3. **Documentation**: Document all analysis decisions
+4. **Data Archiving**: Keep raw data and processing scripts
+
+## Ecological Validity
+
+1. **Site Knowledge**: Understand your study site's ecology
+2. **Temporal Scale**: Consider seasonal and interannual variation
+3. **Spatial Scale**: Account for landscape heterogeneity
+4. **Mechanistic Understanding**: Link patterns to ecological processes
+
+## Statistical Rigor
+
+1. **Assumption Checking**: Validate model assumptions
+2. **Multiple Comparisons**: Adjust for family-wise error rates
+3. **Effect Sizes**: Report meaningful effect sizes, not just p-values
+4. **Uncertainty**: Always include confidence intervals
+
+# Conclusion
+
+This framework provides a comprehensive, reproducible approach to analyzing NEON root-soil relationships. The modular design allows for easy customization while maintaining statistical rigor and ecological relevance.
+
+## Key Features
+
+- **Multi-site capability**: Analyze any NEON terrestrial site
+- **Sophisticated statistics**: Mixed models, depth stratification, formal testing
+- **Publication-ready outputs**: High-quality figures and tables
+- **Extensible design**: Easy to add new analyses or sites
+- **Reproducible workflow**: Complete documentation and testing
+
+## Next Steps
+
+1. **Apply to your sites**: Use the framework with your NEON sites of interest
+2. **Extend analyses**: Add new statistical models or visualizations
+3. **Compare ecosystems**: Use multi-site analysis for comparative studies
+4. **Link to other data**: Integrate with climate, vegetation, or microbial data
+5. **Develop hypotheses**: Use results to generate new research questions
+
+## Getting Help
+
+- **Package documentation**: `?run_deju_pipeline`
+- **NEON data portal**: https://data.neonscience.org
+- **Ecological interpretation**: Consult site-specific literature
+- **Statistical questions**: Consider consulting with statisticians
+
+```{r session-info}
+sessionInfo()

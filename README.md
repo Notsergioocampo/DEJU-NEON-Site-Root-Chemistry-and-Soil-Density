@@ -1,208 +1,231 @@
-# NEON DEJU Site Root Chemistry and Soil Density Analysis
+# NEON Root Chemistry and Soil Bulk Density Analysis Framework
 
-[![R-CMD-check](https://github.com/Notsergioocampo/DEJU-NEON-Site-Root-Chemistry-and-Soil-Density/workflows/R-CMD-check/badge.svg)](https://github.com/Notsergioocampo/DEJU-NEON-Site-Root-Chemistry-and-Soil-Density/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+A professional R framework for analyzing root chemistry and soil bulk density relationships using NEON (National Ecological Observatory Network) terrestrial site data. Designed for ecological researchers studying belowground carbon and nitrogen dynamics.
 
 ## Overview
 
-This project analyzes root chemistry (carbon, nitrogen, C:N ratios) and soil bulk density relationships at the NEON DEJU (Delta Junction) site in Alaska. The study focuses on understanding how root nutrient composition varies with soil physical properties in boreal forest ecosystems with discontinuous permafrost.
+This framework provides a complete pipeline for analyzing NEON root-soil relationships, from raw data processing through publication-ready results. It focuses on the Delta Junction (DEJU) site in Alaska as a case study, with extensible architecture for additional NEON sites.
 
-## 🌲 Ecological Context
+## Key Features
 
-The DEJU site represents a critical transition zone between boreal forest and tundra ecosystems, characterized by:
-- Subarctic climate with long cold winters
-- Discontinuous permafrost
-- Nutrient-limited soils
-- Black spruce (Picea mariana) and white spruce (Picea glauca) dominance
+### Data Processing
+- Automated loading and cleaning of NEON data products
+- Quality control and validation procedures
+- Depth extraction from NEON sample IDs
+- Merging of root chemistry and soil bulk density datasets
 
-Understanding root-soil relationships in these environments is crucial for predicting ecosystem responses to climate change and permafrost thaw.
+### Statistical Analysis
+- Descriptive statistics and summary tables
+- Root size class comparisons (fine vs. coarse roots)
+- Depth-stratified analysis across soil horizons
+- Linear models and basic mixed models for soil-root relationships
+- Effect size calculations with ecological interpretation
 
-## 📊 Data Sources
+### Visualization
+- Publication-quality figures with consistent ecological themes
+- Root chemistry distributions and relationships
+- Soil-root correlation plots
+- Depth profiles showing vertical patterns
+- Multi-panel layouts for complex comparisons
 
-This analysis uses standardized data products from the National Ecological Observatory Network (NEON):
+### Reproducible Research
+- Complete documentation with roxygen2
+- Comprehensive test suite
+- Version control integration
+- Reproducible workflows with session tracking
 
-- **DP1.10066.001**: Root biomass and chemistry data
-- **DP1.00096.001**: Soil physical and chemical properties
+## Requirements
 
-## 🚀 Quick Start
+### R Packages
+- dplyr (>= 1.0.0)
+- tidyr (>= 1.0.0)
+- ggplot2 (>= 3.3.0)
+- readr (>= 1.4.0)
+- stringr (>= 1.4.0)
+- purrr (>= 0.3.0)
+- broom (>= 0.7.0)
+- ggthemes (>= 4.2.0)
+- lme4 (optional, for mixed models)
 
-### Prerequisites
+### System Requirements
+- R version 4.0.0 or higher
+- Pandoc (optional, for research paper rendering)
 
-- R (version 4.0 or higher)
-- RStudio (recommended)
+## Installation
 
-### Installation
-
-1. Clone this repository:
-```bash
-git clone https://github.com/Notsergioocampo/DEJU-NEON-Site-Root-Chemistry-and-Soil-Density.git
-cd DEJU-NEON-Site-Root-Chemistry-and-Soil-Density
-```
-
-2. Install required R packages:
 ```r
+# Install required packages
 install.packages(c("dplyr", "tidyr", "ggplot2", "readr", "stringr", 
-                   "broom", "ggthemes", "neonUtilities", "testthat"))
+                   "purrr", "broom", "ggthemes"))
+
+# Optional: Install lme4 for mixed models
+install.packages("lme4")
+
+# Clone the repository
+git clone https://github.com/Notsergioocampo/DEJU-NEON-Site-Root-Chemistry-and-Soil-Density.git
 ```
 
-3. Run the complete analysis:
+## Quick Start
+
+### Run Complete Analysis
 ```r
-# From R console
-source("scripts/run_analysis.R")
-```
+# Navigate to project directory
+setwd("path/to/DEJU-NEON-Site-Root-Chemistry-and-Soil-Density")
 
-Or from command line:
-```bash
+# Run complete analysis pipeline
 Rscript scripts/run_analysis.R
 ```
 
-## 📁 Project Structure
+### Custom Analysis
+```r
+# Load the framework
+source("scripts/run_analysis.R")
 
-```
-DEJU-NEON-Site-Root-Chemistry-and-Soil-Density/
-├── R/                          # R functions
-│   ├── data_processing.R       # Data cleaning and processing functions
-│   ├── visualization.R         # Plotting functions
-│   └── analysis.R              # Statistical analysis functions
-├── scripts/                    # Analysis scripts
-│   ├── run_analysis.R          # Main analysis pipeline
-│   └── download_data.R         # Data download script
-├── data/
-│   ├── raw_data/               # Raw NEON data files
-│   ├── processed/              # Cleaned and processed data
-│   └── documentation/          # Data documentation
-├── figures/                    # Generated plots and visualizations
-├── output/                     # Analysis results and reports
-├── tests/                      # Unit tests
-└── docs/                       # Additional documentation
+# Run with specific parameters
+results <- run_deju_pipeline(
+  site_id = "DEJU",
+  data_dir = "data/raw_data",
+  output_dir = "output",
+  run_models = TRUE,
+  create_figures = TRUE,
+  render_report = TRUE
+)
+
+# Access results
+summary(results)
 ```
 
-## 🔧 Key Functions
+## Data Requirements
+
+This framework uses two NEON data products:
+
+1. **DP1.10066.001** - Root biomass and chemistry (megapit protocol)
+2. **DP1.00096.001** - Soil physical and chemical properties
+
+Expected file structure:
+```
+data/raw_data/
+├── megapit_carbon_nitrogen.csv
+├── megapit_root_samples.csv
+├── soil_bulk_density.csv
+└── soil_chemistry.csv
+```
+
+## Output Structure
+
+```
+output/
+├── figures/                    # Publication-quality plots
+│   ├── nitrogen_distribution.png
+│   ├── carbon_nitrogen_relationship.png
+│   ├── depth_profiles.png
+│   └── ...
+├── tables/                     # Statistical summaries
+│   ├── root_chemistry_summary.csv
+│   ├── depth_category_summary.csv
+│   └── model_summary.csv
+├── research_paper.html         # Complete analysis report
+├── research_paper.docx         # Word version
+└── project_report.html         # Fallback summary (if Pandoc unavailable)
+```
+
+## Supported NEON Sites
+
+Pre-configured sites with ecological parameters:
+
+| Site | Domain | Ecosystem Type | Location |
+|------|--------|----------------|----------|
+| DEJU | D19 | Boreal forest-tundra | Alaska |
+| HARV | D01 | Temperate deciduous | Massachusetts |
+| BART | D01 | Northern hardwood | New Hampshire |
+| NIWO | D13 | Alpine/subalpine | Colorado |
+
+## Statistical Methods
 
 ### Data Processing
-- `clean_root_chemistry()`: Filters and validates root chemistry data
-- `clean_soil_data()`: Processes soil bulk density measurements
-- `merge_root_data()`: Combines root chemistry with sample metadata
-- `extract_depth_info()`: Parses depth information from NEON sample IDs
+- Outlier detection using 4-standard-deviation rule
+- Missing data handling with systematic removal
+- Variable transformation where appropriate
+- Comprehensive range and consistency checks
 
-### Visualization
-- `plot_nitrogen_distribution()`: Histogram of root nitrogen content
-- `plot_carbon_nitrogen_relationship()`: Scatter plot with correlation
-- `plot_root_size_comparison()`: Comparison by root diameter classes
-- `plot_soil_root_relationship()`: Soil bulk density vs root chemistry
-- `plot_depth_profiles()`: Vertical distribution patterns
+### Statistical Modeling
+- Linear models for relationship analysis
+- Basic mixed models (lme4) for hierarchical data
+- Two-sample t-tests for group comparisons
+- ANOVA for multi-group comparisons
+- Effect size calculations (Cohen's d)
 
-### Statistical Analysis
-- `compare_root_sizes()`: T-tests between fine and coarse roots
-- `analyze_soil_root_correlation()`: Correlation analysis
-- `perform_regression()`: Linear regression modeling
-- `perform_comprehensive_analysis()`: Complete statistical workflow
+### Hypothesis Testing
+- Pearson correlation for continuous relationships
+- Post-hoc tests (Tukey HSD) for multiple comparisons
+- Significance testing at α = 0.05
+- Effect size reporting for ecological interpretation
 
-## 📈 Analysis Pipeline
+## Testing
 
-The main analysis script (`scripts/run_analysis.R`) runs a complete pipeline:
-
-1. **Data Processing**: Clean and validate raw NEON data
-2. **Data Merging**: Combine root chemistry with soil properties
-3. **Visualization**: Generate publication-quality figures
-4. **Statistical Analysis**: Perform comprehensive statistical tests
-5. **Report Generation**: Create final analysis report
-
-## 🎯 Key Research Questions
-
-1. **How do root carbon and nitrogen concentrations vary with soil bulk density?**
-2. **Do fine roots (≤4mm) differ from coarse roots (>4mm) in chemical composition?**
-3. **What are the depth-related patterns in root-soil relationships?**
-4. **How do these relationships inform our understanding of boreal forest nutrient cycling?**
-
-## 📋 Example Outputs
-
-### Summary Statistics
-| Variable | Mean ± SD | Range | n |
-|----------|-----------|-------|---|
-| Root Carbon (%) | 44.2 ± 8.1 | 8.2 - 53.6 | 65 |
-| Root Nitrogen (%) | 0.68 ± 0.23 | 0.2 - 1.4 | 65 |
-| C:N Ratio | 68.4 ± 25.3 | 14.6 - 283.0 | 65 |
-| Soil Bulk Density (g/cm³) | 1.25 ± 0.35 | 0.57 - 1.62 | 10 |
-
-### Key Findings
-- Root C:N ratios show high variability (CV = 37%), indicating diverse decomposition potential
-- No significant relationships between soil bulk density and root chemistry variables
-- Fine roots have slightly higher nitrogen content than coarse roots
-- Depth patterns suggest complex root-soil interactions in permafrost-affected soils
-
-## 🧪 Testing
-
-Run unit tests to ensure code quality:
+Run the comprehensive test suite:
 ```r
 library(testthat)
 test_dir("tests")
 ```
 
-## 🤝 Contributing
+## Research Paper
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+The framework generates a complete research paper incorporating:
+- Your original scientific writing and analysis
+- Dynamically generated figures and tables
+- Professional formatting suitable for submission
+- Multiple output formats (HTML, Word, PDF if Pandoc available)
 
-### Development Guidelines
-1. Follow tidyverse style guidelines
-2. Add unit tests for new functions
-3. Update documentation
-4. Ensure all tests pass before submitting
+If Pandoc is not available system-wide, the framework:
+- Creates a fallback HTML summary
+- Preserves your RMarkdown paper for manual knitting in RStudio
+- Provides clear instructions for installing Pandoc
 
-## 🔄 Adapting for Other NEON Sites
+## Contributing
 
-This analysis framework can be easily adapted for other NEON sites:
+We welcome contributions from the ecological community:
 
-1. **Change site code**: Replace "DEJU" with your target site (e.g., "HARV", "UNDE")
-2. **Update ecological context**: Modify site description and ecological interpretation
-3. **Adjust depth categories**: Customize depth breaks for your ecosystem
-4. **Modify statistical tests**: Adapt tests based on your specific research questions
+1. Fork the repository
+2. Create a feature branch
+3. Implement your changes with tests
+4. Submit a pull request
 
-Example for Harvard Forest:
-```r
-# In download_data.R, change:
-site = c("HARV")  # Instead of "DEJU"
-```
+Please ensure all contributions:
+- Include appropriate documentation
+- Pass the existing test suite
+- Follow the established coding style
+- Are scientifically sound and reproducible
 
-## 📚 Citation
+## Citation
 
-If you use this code in your research, please cite:
+If you use this framework in your research, please cite:
 
 ```bibtex
-@software{deju_neon_analysis,
+@software{neon_root_soil_2024,
+  title = {NEON Root Chemistry and Soil Bulk Density Analysis Framework},
   author = {Ocampo, Sergio},
-  title = {NEON DEJU Site Root Chemistry and Soil Density Analysis},
-  year = {2025},
+  year = {2024},
   url = {https://github.com/Notsergioocampo/DEJU-NEON-Site-Root-Chemistry-and-Soil-Density}
 }
 ```
 
-And cite the NEON data:
-```bibtex
-@misc{neon_data,
-  title={National Ecological Observatory Network (NEON) Data},
-  author={NEON},
-  year={2025},
-  url={https://www.neonscience.org}
-}
-```
+## License
 
-## 📄 License
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Acknowledgments
 
-## 🙏 Acknowledgments
+- National Ecological Observatory Network (NEON) for providing high-quality ecological data
+- NSF for funding the National Ecological Observatory Network
+- The ecological community for feedback and testing
 
-- National Ecological Observatory Network (NEON) for providing open ecological data
-- University of San Francisco Department of Biology for support
-- R community for developing excellent open-source tools
+## Contact
 
-## 📞 Contact
-
-For questions or collaboration opportunities:
-- GitHub Issues: [Create an issue](https://github.com/Notsergioocampo/DEJU-NEON-Site-Root-Chemistry-and-Soil-Density/issues)
+For questions, suggestions, or collaboration opportunities:
+- Issues: [GitHub Issues](https://github.com/Notsergioocampo/DEJU-NEON-Site-Root-Chemistry-and-Soil-Density/issues)
 - Email: socampo3@dons.usfca.edu
 
 ---
 
-**Happy analyzing!** 🌱📊
+**Note:** This framework is designed for ecological research and should be used responsibly. Always consider the ecological context of your study sites and consult relevant literature when interpreting results.
