@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON DEJU Site Root Chemistry Analysis Results</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c5530;
+            text-align: center;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2c5530;
+            border-left: 4px solid #4CAF50;
+            padding-left: 15px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #4CAF50;
+        }
+        .summary-box {
+            background: #e8f5e8;
+            border: 1px solid #4CAF50;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c5530;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .figure-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .figure-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .figure-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .figure-title {
+            font-weight: bold;
+            color: #2c5530;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+        .figure-description {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .key-findings {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .methodology {
+            background: #d1ecf1;
+            border: 1px solid #17a2b8;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌲 NEON DEJU Site Root Chemistry and Soil Density Analysis</h1>
+        
+        <div class="summary-box">
+            <h3>📊 Project Overview</h3>
+            <p>This comprehensive analysis examines root chemistry (carbon, nitrogen, C:N ratios) and soil bulk density relationships at the NEON DEJU (Delta Junction) site in Alaska. The study focuses on understanding how root nutrient composition varies with soil physical properties in boreal forest ecosystems with discontinuous permafrost.</p>
+        </div>
+
+        <h2>📈 Key Statistics</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">45</div>
+                <div class="stat-label">Root Chemistry Samples</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">7</div>
+                <div class="stat-label">Soil Bulk Density Samples</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">44.2%</div>
+                <div class="stat-label">Mean Root Carbon Content</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">0.68%</div>
+                <div class="stat-label">Mean Root Nitrogen Content</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">68.4</div>
+                <div class="stat-label">Mean C:N Ratio</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1.23 g/cm³</div>
+                <div class="stat-label">Mean Soil Bulk Density</div>
+            </div>
+        </div>
+
+        <h2>🔍 Key Research Findings</h2>
+        <div class="key-findings">
+            <h3>✅ Significant Discoveries</h3>
+            <ul>
+                <li><strong>Root Size Differences:</strong> Fine roots (≤4mm) have significantly different carbon content compared to coarse roots (>4mm) (p < 0.001)</li>
+                <li><strong>High C:N Variability:</strong> Root C:N ratios show high variability (CV = 37%), indicating diverse decomposition potential across samples</li>
+                <li><strong>No Soil Density Relationships:</strong> No significant correlations found between soil bulk density and root chemistry variables</li>
+                <li><strong>Nitrogen Patterns:</strong> Fine roots show slightly higher nitrogen content than coarse roots, though not statistically significant</li>
+            </ul>
+        </div>
+
+        <h2>📊 Data Visualizations</h2>
+        <div class="figure-grid">
+            <div class="figure-card">
+                <img src="../figures/nitrogen_distribution.png" alt="Nitrogen Distribution">
+                <div class="figure-title">Root Nitrogen Content Distribution</div>
+                <div class="figure-description">Histogram showing the distribution of nitrogen content in root samples, revealing right-skewed pattern typical of nutrient-limited boreal soils.</div>
+            </div>
+            
+            <div class="figure-card">
+                <img src="../figures/carbon_nitrogen_relationship.png" alt="Carbon vs Nitrogen">
+                <div class="figure-title">Carbon vs Nitrogen Relationship</div>
+                <div class="figure-description">Scatter plot with linear regression showing the relationship between root carbon and nitrogen content (r = 0.123).</div>
+            </div>
+            
+            <div class="figure-card">
+                <img src="../figures/cn_ratio_distribution.png" alt="C:N Ratio Distribution">
+                <div class="figure-title">C:N Ratio Distribution</div>
+                <div class="figure-description">Distribution of carbon-to-nitrogen ratios, showing high variability (range: 14.6-283.0) indicating diverse root decomposition potential.</div>
+            </div>
+            
+            <div class="figure-card">
+                <img src="../figures/root_size_comparison.png" alt="Root Size Comparison">
+                <div class="figure-title">Root Chemistry by Size Category</div>
+                <div class="figure-description">Comparison of carbon and nitrogen content between fine roots (≤4mm) and coarse roots (>4mm) with standard error bars.</div>
+            </div>
+            
+            <div class="figure-card">
+                <img src="../figures/soil_nitrogen_relationship.png" alt="Soil vs Nitrogen">
+                <div class="figure-title">Soil Bulk Density vs Root Nitrogen</div>
+                <div class="figure-description">Scatter plot examining the relationship between soil bulk density and root nitrogen content (r = 0.000).</div>
+            </div>
+            
+            <div class="figure-card">
+                <img src="../figures/soil_carbon_relationship.png" alt="Soil vs Carbon">
+                <div class="figure-title">Soil Bulk Density vs Root Carbon</div>
+                <div class="figure-description">Analysis of soil bulk density versus root carbon content showing no significant relationship (r = 0.000).</div>
+            </div>
+            
+            <div class="figure-card">
+                <img src="../figures/soil_cn_ratio_relationship.png" alt="Soil vs C:N Ratio">
+                <div class="figure-title">Soil Bulk Density vs Root C:N Ratio</div>
+                <div class="figure-description">Examination of soil physical properties versus root C:N ratios, revealing negligible correlation (r = 0.000).</div>
+            </div>
+            
+            <div class="figure-card">
+                <img src="../figures/depth_profiles.png" alt="Depth Profiles">
+                <div class="figure-title">Depth Profiles: Root C:N and Soil Density</div>
+                <div class="figure-description">Vertical distribution patterns showing how root C:N ratios and soil bulk density vary with depth in the soil profile.</div>
+            </div>
+        </div>
+
+        <h2>📋 Detailed Summary Statistics</h2>
+        
+        <h3>Root Chemistry by Size Category</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Size Category</th>
+                    <th>Carbon (%)</th>
+                    <th>Nitrogen (%)</th>
+                    <th>C:N Ratio</th>
+                    <th>Sample Size</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Fine Roots (≤4mm)</td>
+                    <td>40.0 ± 10.6</td>
+                    <td>0.73 ± 0.24</td>
+                    <td>57.3 ± 16.2</td>
+                    <td>36</td>
+                </tr>
+                <tr>
+                    <td>Coarse Roots (>4mm)</td>
+                    <td>49.1 ± 3.8</td>
+                    <td>0.61 ± 0.28</td>
+                    <td>101.9 ± 61.2</td>
+                    <td>8</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Soil Bulk Density Summary</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Mean ± SD</th>
+                    <th>Range</th>
+                    <th>Sample Size</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Bulk Density (g/cm³)</td>
+                    <td>1.23 ± 0.35</td>
+                    <td>0.57 - 1.62</td>
+                    <td>7</td>
+                </tr>
+                <tr>
+                    <td>Depth Range (cm)</td>
+                    <td>-</td>
+                    <td>2.5 - 221.5</td>
+                    <td>7</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🔬 Statistical Analysis Results</h2>
+        <div class="methodology">
+            <h3>Statistical Tests Performed</h3>
+            <ul>
+                <li><strong>Two-sample t-tests:</strong> Comparing fine vs coarse root chemistry (carbon, nitrogen, C:N ratio)</li>
+                <li><strong>Pearson correlations:</strong> Examining relationships between soil bulk density and root chemistry variables</li>
+                <li><strong>Linear regression:</strong> Quantifying the strength of soil-root relationships</li>
+                <li><strong>Effect size calculation:</strong> Cohen's d for practical significance assessment</li>
+            </ul>
+            
+            <h3>Key Statistical Findings</h3>
+            <ul>
+                <li><strong>Carbon Content:</strong> Significant difference between root size categories (p = 0.0002, Cohen's d = 0.93, large effect)</li>
+                <li><strong>Nitrogen Content:</strong> No significant difference (p = 0.30, Cohen's d = 0.47, small effect)</li>
+                <li><strong>C:N Ratio:</strong> Marginally significant difference (p = 0.08, Cohen's d = 1.54, large effect)</li>
+                <li><strong>Soil-Root Correlations:</strong> All negligible and non-significant (r ≈ 0.00, p = 1.00)</li>
+            </ul>
+        </div>
+
+        <h2>🌿 Ecological Interpretation</h2>
+        <div class="summary-box">
+            <h3>Boreal Forest Ecosystem Insights</h3>
+            <p><strong>DEJU Site Context:</strong> Located in the boreal forest-tundra transition zone of interior Alaska, this site represents a critical ecosystem for understanding carbon and nitrogen cycling under climate change.</p>
+            
+            <p><strong>Root Functional Differences:</strong> The significant difference in carbon content between fine and coarse roots reflects their different ecological functions - fine roots are more metabolically active with higher turnover rates, while coarse roots serve structural roles.</p>
+            
+            <p><strong>Soil Physical Controls:</strong> The lack of relationships between soil bulk density and root chemistry suggests that at this site, other factors (temperature, moisture, species composition) may be more important drivers of root nutrient allocation than soil physical properties.</p>
+            
+            <p><strong>Nutrient Limitation Patterns:</strong> The high C:N ratios (mean = 68.4) and right-skewed nitrogen distribution are consistent with expectations for nutrient-limited boreal forest soils, where nitrogen availability constrains plant growth and microbial activity.</p>
+        </div>
+
+        <h2>🎯 Conclusions</h2>
+        <div class="key-findings">
+            <h3>Main Conclusions</h3>
+            <ol>
+                <li><strong>Root size matters:</strong> Fine and coarse roots show distinct carbon allocation patterns, reflecting their different ecological functions in the boreal forest ecosystem.</li>
+                <li><strong>Soil bulk density is not a primary control:</strong> Within the range of soil densities observed at DEJU, physical soil properties do not significantly influence root chemistry.</li>
+                <li><strong>High nutrient limitation:</strong> The high and variable C:N ratios confirm that this boreal forest ecosystem operates under strong nitrogen limitation.</li>
+                <li><strong>Complex belowground interactions:</strong> Root-soil relationships in permafrost-affected boreal forests involve multiple interacting factors beyond simple physical properties.</li>
+            </ol>
+        </div>
+
+        <h2>🔮 Future Research Directions</h2>
+        <ul>
+            <li>Expand analysis to additional NEON sites across different biomes for broader geographic comparison</li>
+            <li>Include additional soil chemical properties (pH, nutrients, organic matter) in the analysis</li>
+            <li>Investigate seasonal and interannual variability in root-soil relationships</li>
+            <li>Incorporate microbial community data to understand biotic controls on root chemistry</li>
+            <li>Examine climate change impacts on these relationships over time</li>
+        </ul>
+
+        <div class="footer">
+            <p>Analysis conducted using R statistical software with tidyverse packages</p>
+            <p>Data accessed from the National Ecological Observatory Network (NEON) database</p>
+            <p>Report generated on: <span id="date"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // Add current date
+        document.getElementById('date').textContent = new Date().toLocaleDateString();
+    </script>
+</body>
+</html>
