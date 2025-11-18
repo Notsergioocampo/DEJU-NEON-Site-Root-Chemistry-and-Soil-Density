@@ -110,26 +110,43 @@ Regardless of these constraints, the study provides indispensable baseline insig
 
 This study was made possible using chatGPT for the code, and publicly available ecological data provided by the National Ecological Observatory Network (NEON), a program sponsored by the National Science Foundation and operated under cooperative agreement by Battelle Memorial Institute. I thank Dr. Zimmerman, the University of San Francisco Department of Biology, and any teaching assistants for their support and guidance throughout this project. I also acknowledge the contributions of NEON field staff at the Delta Junction (DEJU) site for data collection and curation.
 
-```{r load-packages}
-#Load required packages
-library("dplyr")
-library("tidyr")
-library("ggplot2")
-library("readr")
-library("lubridate")
-library("neonUtilities")
-
-# Load pre-downloaded NEON data from /data/raw_data/
-megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
-soil_bulk <- read.csv("data/raw_data/soil_bulk_density.csv")
+```{r load-packages, include=FALSE}
+# Load required packages
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+library(lubridate)
 ```
 
 # Figures
 
+```{r load-pipeline-data}
+# Source the existing NEON pipeline and process DEJU data
+source("R/data_processing.R")
+source("R/visualization.R")
+
+# Process NEON data for DEJU site
+data_list <- process_neon_data(
+  data_dir = "data/raw_data",
+  site_id = "DEJU",
+  validate = FALSE
+)
+
+# Extract processed data objects
+root_chemistry <- data_list$root_chemistry
+soil_bulk_density <- data_list$soil_bulk_density
+merged_data <- data_list$merged_data
+
+# Filter to DEJU site if not already filtered
+root_deju <- root_chemistry
+soil_deju <- soil_bulk_density
+merged_deju <- merged_data
+```
+
 ```{r Nitrogen-Distrubution}
-# Plot Time! Nitrogen % Distrubution
 # Plot 1: Nitrogen Distribution
-ggplot(megapit_cn, aes(x = nitrogenPercent)) +
+ggplot(root_deju, aes(x = nitrogenPercent)) +
   geom_histogram(binwidth = 0.2, fill = "#4CAF13", color = "black") +
   labs(title = "Distribution of Nitrogen Content in Roots",
        x = "Nitrogen Percent",
@@ -141,7 +158,7 @@ ggplot(megapit_cn, aes(x = nitrogenPercent)) +
 
 ```{r Carbon-vs-Nitrogen}
 # Plot 2: Carbon vs Nitrogen
-ggplot(megapit_cn, aes(x = carbonPercent, y = nitrogenPercent)) +
+ggplot(root_deju, aes(x = carbonPercent, y = nitrogenPercent)) +
   geom_point(alpha = 0.6, color = "#FF9800") +
   geom_smooth(method = "lm", se = TRUE, color = "black") +
   labs(title = "Carbon vs Nitrogen in Megapit Root Samples",
@@ -154,8 +171,9 @@ ggplot(megapit_cn, aes(x = carbonPercent, y = nitrogenPercent)) +
 
 ```{r C-N-Ratio}
 # Plot 3: C:N Ratio
-megapit_cn$cn_ratio <- megapit_cn$carbonPercent / megapit_cn$nitrogenPercent
-ggplot(megapit_cn, aes(x = cn_ratio)) +
+root_deju <- root_deju %>%
+  mutate(cn_ratio = carbonPercent / nitrogenPercent)
+ggplot(root_deju, aes(x = cn_ratio)) +
   geom_histogram(binwidth = 2, fill = "#9C27B0", color = "black") +
   labs(title = "Carbon:Nitrogen Ratio Distribution",
        x = "C:N Ratio",
@@ -168,31 +186,25 @@ ggplot(megapit_cn, aes(x = cn_ratio)) +
 ```{r Megapit-root-carbon-nitrogen-consumption-as-Nitrogen-vs-Carbon}
 # Plot for Megapit root carbon-nitrogen consumption as Nitrogen Vs Carbon
 
-# Step 1: Subset and join
-carbon_nitrogen <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
-root_sample <- read.csv("data/raw_data/megapit_root_samples.csv")
-joined_data <- carbon_nitrogen %>%
-  left_join(root_sample, by = join_by(cnSampleID == sampleID))
-
-# Step 2: Filter usable rows
-filtered_data <- joined_data %>%
+# Use processed pipeline data with sizeCategory
+root_with_size <- root_deju %>%
   filter(!is.na(sizeCategory),
          !is.na(nitrogenPercent),
          !is.na(carbonPercent))
 
-# Step 3: Pivot to long format
-long_data <- filtered_data %>%
+# Step 1: Pivot to long format
+long_data <- root_with_size %>%
   pivot_longer(cols = c(nitrogenPercent, carbonPercent),
                names_to = "element",
                values_to = "percent")
 
-# Step 4: Summarize mean + standard error for error bars
+# Step 2: Summarize mean + standard error for error bars
 summary_data <- long_data %>%
   group_by(sizeCategory, element) %>%
-  summarise(mean_percent = mean(percent),
-            se = sd(percent) / sqrt(n()), .groups = "drop")
+  summarise(mean_percent = mean(percent, na.rm = TRUE),
+            se = sd(percent, na.rm = TRUE) / sqrt(n()), .groups = "drop")
 
-# Step 5: Create bar plot with error bars and data labels
+# Step 3: Create bar plot with error bars and data labels
 ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
   geom_errorbar(aes(ymin = mean_percent - se, ymax = mean_percent + se),
@@ -201,9 +213,9 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
   geom_text(aes(label = round(mean_percent, 1)),
             position = position_dodge(width = 0.9),
             vjust = -1.2, size = 4) +
-  scale_fill_manual(values = c("carbonPercent" = "blue",
-                               "nitrogenPercent" = "red"),
-                    labels = c("Carbon", "Nitrogen")) +
+  scale_fill_manual(values = c("nitrogenPercent" = "red",
+                               "carbonPercent" = "blue"),
+                    labels = c("Nitrogen", "Carbon")) +
   labs(title = "Nitrogen vs Carbon Consumption by Root Size Category",
        x = "Root Size Category",
        y = "Mean Percent (%)",
@@ -216,30 +228,13 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
 
 **Figure 4:**  Bar plot comparing mean percent carbon, %C blue, and percent nitrogen, %N red, across two root size categories ≤4 mm and >4 mm at the DEJU site. Coarse roots which are >4 mm, exhibit a higher average carbon concentration at 49.1% when compared to fine roots exhibiting 40%. In contrast, fine roots ≤4 mm display slightly higher nitrogen content at 0.7% relative to coarse roots displaying at 0.6%. Error bars represent ±1 standard error of the mean.
 
-```{r Soil-Supporting-Root-Data, message=FALSE, warning=FALSE}
-
-soil_bulk <- read.csv("data/raw_data/soil_bulk_density.csv")
-
-# Load megapit root carbon/nitrogen data
-megapit_cn <- read.csv("data/raw_data/megapit_carbon_nitrogen.csv")
-
-# Merge on siteID and domainID (best available match)
-merged_soil_root <- megapit_cn %>%
-  left_join(soil_bulk, by = c("siteID", "domainID")) %>%
-  filter(!is.na(nitrogenPercent),
-         !is.na(carbonPercent),
-         !is.na(bulkDensExclCoarseFrag))  # Only available soil numeric
-```
-
-
 ```{r Soil-Bulk-Density-vs-Root-Nitrogen}
-# Plot 1: Soil Bulk Density vs. Root Nitrogen
-ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
-                               nitrogenPercent)) +
+# Plot 5: Soil Bulk Density vs. Root Nitrogen
+ggplot(merged_deju, aes(x = bulk_density, y = nitrogenPercent)) +
   geom_point(color = "#2E7D32", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root Nitrogen",
-       x = "Bulk Density (g/cm³, excluding coarse fragments)",
+       x = "Bulk Density (g/cm³)",
        y = "Root Nitrogen (%)") +
   theme_minimal()
 ```
@@ -247,13 +242,12 @@ ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
 **Figure 5:** Scatter plot showing the relationship between soil bulk density and root nitrogen content in percent. Root nitrogen concentrations range from approximately 0.25% to 1.75%, with no clear trend across the bulk density gradient. The flat linear regression line indicates no meaningful association between soil compaction and root nitrogen levels within the sampled data.
 
 ```{r Soil-Bulk-Density-vs-Root-Carbon}
-# Plot 2: Soil Bulk Density vs. Root Carbon
-ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
-                               carbonPercent)) +
+# Plot 6: Soil Bulk Density vs. Root Carbon
+ggplot(merged_deju, aes(x = bulk_density, y = carbonPercent)) +
   geom_point(color = "#6D4C41", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root Carbon",
-       x = "Bulk Density (g/cm³, excluding coarse fragments)",
+       x = "Bulk Density (g/cm³)",
        y = "Root Carbon (%)") +
   theme_minimal()
 ```
@@ -261,15 +255,13 @@ ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y =
 **Figure 6:** Scatter plot shows the relationship between soil bulk density and root carbon content in percent. Root carbon concentrations range from approximately 5% to 55%, but no discernible pattern is observed across the bulk density gradient. The flat regression line and broad vertical scatter plots indicate no meaningful association between soil compaction and carbon concentration in root tissues within the sampled data.
 
 ```{r Soil-Bulk-Density-vs-Root-C-N-Ratio}
-# Plot 3: Soil Bulk Density vs. Root C:N Ratio
-merged_soil_root <- merged_soil_root %>%
-  mutate(cn_ratio = carbonPercent / nitrogenPercent)
-
-ggplot(merged_soil_root, aes(x = bulkDensExclCoarseFrag, y = cn_ratio)) +
+# Plot 7: Soil Bulk Density vs. Root C:N Ratio
+# cn_ratio is already computed in merged_data
+ggplot(merged_deju, aes(x = bulk_density, y = cn_ratio)) +
   geom_point(color = "#9C27B0", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root C:N Ratio",
-       x = "Bulk Density (g/cm³, excluding coarse fragments)",
+       x = "Bulk Density (g/cm³)",
        y = "Root C:N Ratio") +
   theme_minimal()
 ```
