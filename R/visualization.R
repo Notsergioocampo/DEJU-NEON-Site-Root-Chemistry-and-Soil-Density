@@ -8,6 +8,10 @@
 #' @docType package
 NULL
 
+# Load required packages
+library(tidyr)
+library(ggplot2)
+
 #' Create depth-stratified visualization of root chemistry
 #'
 #' Generates publication-quality plots showing root chemistry variables
@@ -355,26 +359,47 @@ plot_depth_profiles <- function(root_data,
   message(sprintf("Creating depth profiles for site %s", site_id))
   
   # Prepare root data
-  root_summary <- root_data %>%
-    mutate(depth_mid = (depth_cm_top + depth_cm_bottom) / 2) %>%
-    group_by(depth_mid) %>%
-    summarise(
-      across(all_of(variables), list(mean = ~mean(., na.rm = TRUE), 
-                                     se = ~sd(., na.rm = TRUE) / sqrt(n()),
-                                     n = ~n()), 
-             .groups = "drop")
-    ) %>%
-    pivot_longer(cols = -depth_mid, names_to = c("variable", "statistic"), 
-                 names_pattern = "(.*)_(.*)", values_to = "value") %>%
-    pivot_wider(names_from = statistic, values_from = value) %>%
-    mutate(
-      lower = mean - 1.96 * se,
-      upper = mean + 1.96 * se
-    )
+  # Check if we have depth range columns, otherwise use depth_cm directly
+  if (all(c("depth_cm_top", "depth_cm_bottom") %in% names(root_data))) {
+    root_summary <- root_data %>%
+      mutate(depth_mid = (depth_cm_top + depth_cm_bottom) / 2) %>%
+      group_by(depth_mid) %>%
+      summarise(
+        across(all_of(variables), list(mean = ~mean(., na.rm = TRUE), 
+                                       se = ~sd(., na.rm = TRUE) / sqrt(n()),
+                                       n = ~n()), 
+               .groups = "drop")
+      ) %>%
+      pivot_longer(cols = -depth_mid, names_to = c("variable", "statistic"), 
+                   names_pattern = "(.*)_(.*)", values_to = "value") %>%
+      pivot_wider(names_from = statistic, values_from = value) %>%
+      mutate(
+        lower = mean - 1.96 * se,
+        upper = mean + 1.96 * se
+      )
+  } else {
+    # Use depth_cm directly if no range columns available
+    root_summary <- root_data %>%
+      group_by(depth_cm) %>%
+      summarise(
+        across(all_of(variables), list(mean = ~mean(., na.rm = TRUE), 
+                                       se = ~sd(., na.rm = TRUE) / sqrt(n()),
+                                       n = ~n())), 
+        .groups = "drop"
+      ) %>%
+      tidyr::pivot_longer(cols = -depth_cm, names_to = c("variable", "statistic"), 
+                          names_pattern = "(.*)_(.*)", values_to = "value") %>%
+      tidyr::pivot_wider(names_from = statistic, values_from = value) %>%
+      mutate(
+        depth_mid = depth_cm,
+        lower = mean - 1.96 * se,
+        upper = mean + 1.96 * se
+      )
+  }
   
   # Prepare soil data
   soil_summary <- soil_data %>%
-    mutate(depth_mid = (bulkDensTopDepth + bulkDensBottomDepth) / 2) %>%
+    mutate(depth_mid = (depth_cm_top + depth_cm_bottom) / 2) %>%
     group_by(depth_mid) %>%
     summarise(
       bulk_density_mean = mean(bulk_density, na.rm = TRUE),

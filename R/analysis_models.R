@@ -656,16 +656,23 @@ generate_publication_figures <- function(data_list,
     )
     
     # Combined depth profiles
-    figs$depth_profiles <- file.path(output_dir, "depth_profiles.png")
     p4 <- plot_depth_profiles(data_list$root_chemistry, data_list$soil_bulk_density, site_id)
-    ggplot2::ggsave(
-      figs$depth_profiles,
-      plot   = p4,
-      width  = width * 2,
-      height = height,
-      dpi    = dpi,
-      bg     = "white"
-    )
+    
+    # Check if patchwork returned a list (patchwork not available) or a plot object
+    if (inherits(p4, "list")) {
+      warning("patchwork not installed; skipping combined depth profile figure", call. = FALSE)
+      # Don't add the depth_profiles to figs since we can't save it
+    } else {
+      figs$depth_profiles <- file.path(output_dir, "depth_profiles.png")
+      ggplot2::ggsave(
+        figs$depth_profiles,
+        plot   = p4,
+        width  = width * 2,
+        height = height,
+        dpi    = dpi,
+        bg     = "white"
+      )
+    }
   }
   
   message(sprintf("✓ Generated %d publication-quality figures", length(figs)))
@@ -733,13 +740,20 @@ plot_cn_vs_bulk_density <- function(merged_data, site_id = "DEJU") {
 #' @param root_chemistry Data frame containing root chemistry data
 #' @param soil_bulk_density Data frame containing soil bulk density data
 #' @param site_id Character string specifying site ID
-#' @return patchwork object
+#' @return patchwork object if available, otherwise list of plots
 #' @export
 plot_depth_profiles <- function(root_chemistry, soil_bulk_density, site_id = "DEJU") {
   p1 <- plot_cn_vs_depth(root_chemistry, site_id)
   p2 <- plot_bulk_density_vs_depth(soil_bulk_density, site_id)
   
-  patchwork::wrap_plots(p1, p2, ncol = 2)
+  # Check if patchwork is available
+  if (requireNamespace("patchwork", quietly = TRUE)) {
+    return(patchwork::wrap_plots(p1, p2, ncol = 2))
+  } else {
+    warning("Package 'patchwork' not installed; returning list of individual plots instead of combined plot.", 
+             call. = FALSE)
+    return(list(p1 = p1, p2 = p2))
+  }
 }
 
 #' Analyze root size classes
