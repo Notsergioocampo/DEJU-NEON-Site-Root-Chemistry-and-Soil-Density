@@ -14,73 +14,62 @@ library(readr)
 library(stringr)
 library(purrr)
 
-#' Clean root chemistry data
+#' Clean root chemistry table
 #'
-#' Removes invalid data and calculates C:N ratios from root chemistry data.
-#'
-#' @param data Data frame containing root chemistry data
-#' @return Cleaned data frame with C:N ratios
-#' @export
-clean_root_chemistry <- function(data) {
-  
+#' Remove obviously invalid or missing values but keep reasonable data.
+clean_root_chemistry <- function(df) {
+  stopifnot(is.data.frame(df))
+
   # Check for required columns
   required_cols <- c("carbonPercent", "nitrogenPercent")
-  missing_cols <- setdiff(required_cols, names(data))
+  missing_cols <- setdiff(required_cols, names(df))
   
   if (length(missing_cols) > 0) {
     stop(sprintf("Missing required columns: %s", paste(missing_cols, collapse = ", ")))
   }
-  
-  # Remove rows with missing critical data
-  cleaned <- data %>%
-    filter(!is.na(carbonPercent), !is.na(nitrogenPercent)) %>%
-    # Remove zero nitrogen values
-    filter(nitrogenPercent > 0) %>%
+
+  cleaned <- df %>%
+    dplyr::filter(
+      !is.na(carbonPercent),
+      !is.na(nitrogenPercent),
+      carbonPercent > 0,
+      nitrogenPercent > 0
+    ) %>%
+    # If QF columns exist, keep OK/GOOD/blank but don't drop everything if unknown
+    {
+      if ("cnPercentQF" %in% names(.)) {
+        dplyr::filter(., is.na(cnPercentQF) | cnPercentQF %in% c("OK", "good", "GOOD"))
+      } else .
+    } %>%
+    {
+      if ("cnIsotopeQF" %in% names(.)) {
+        dplyr::filter(., is.na(cnIsotopeQF) | cnIsotopeQF %in% c("OK", "good", "GOOD"))
+      } else .
+    } %>%
     # Calculate C:N ratio
-    mutate(cn_ratio = carbonPercent / nitrogenPercent)
-  
-  # Remove extreme outliers (beyond 4 standard deviations) if we have enough data
-  if (nrow(cleaned) > 5) {
-    cleaned <- cleaned %>%
-      filter(
-        abs(carbonPercent - mean(carbonPercent, na.rm = TRUE)) <= 4 * sd(carbonPercent, na.rm = TRUE),
-        abs(nitrogenPercent - mean(nitrogenPercent, na.rm = TRUE)) <= 4 * sd(nitrogenPercent, na.rm = TRUE),
-        abs(cn_ratio - mean(cn_ratio, na.rm = TRUE)) <= 4 * sd(cn_ratio, na.rm = TRUE)
-      )
-  }
+    dplyr::mutate(cn_ratio = carbonPercent / nitrogenPercent)
   
   return(cleaned)
 }
 
-#' Clean soil bulk density data
+#' Clean soil bulk density table
 #'
-#' Filters invalid measurements and standardizes soil bulk density data.
-#'
-#' @param data Data frame containing soil bulk density data
-#' @return Cleaned data frame
-#' @export
-clean_soil_data <- function(data) {
-  
-  # Remove rows with missing bulk density
-  cleaned <- data %>%
-    filter(!is.na(bulkDensExclCoarseFrag)) %>%
-    # Remove negative depths
-    filter(bulkDensCenterDepth >= 0) %>%
-    # Rename columns for consistency
-    rename(
-      bulk_density = bulkDensExclCoarseFrag,
-      depth_cm = bulkDensCenterDepth
+#' Filter out non-positive or missing bulk density values.
+clean_soil_data <- function(df) {
+  stopifnot(is.data.frame(df))
+
+  bd_col <- dplyr::coalesce(
+    df$bulk_density,
+    df$bulkDensExclCoarseFrag
+  )
+
+  df$bulk_density <- bd_col
+
+  df %>%
+    dplyr::filter(
+      !is.na(bulk_density),
+      bulk_density > 0
     )
-  
-  # Remove extreme outliers if we have enough data
-  if (nrow(cleaned) > 5) {
-    cleaned <- cleaned %>%
-      filter(
-        abs(bulk_density - mean(bulk_density, na.rm = TRUE)) <= 4 * sd(bulk_density, na.rm = TRUE)
-      )
-  }
-  
-  return(cleaned)
 }
 
 #' Extract depth information from sample IDs
@@ -225,117 +214,130 @@ load_site_config <- function(site_id) {
   return(site_configs[[site_id]])
 }
 
-#' Process NEON root chemistry and soil bulk density data
+#' Process all NEON data for a given site
 #'
-#' Loads and processes raw NEON data files, performing data cleaning,
-#' validation, and preparation for analysis. Handles multiple NEON sites
-#' through configuration-based processing.
-#'
-#' @param data_dir Character string specifying directory containing raw data files
-#' @param site_id Character string specifying NEON site ID (default: "DEJU")
-#' @param config List containing site configuration parameters (optional)
-#' @param validate Logical indicating whether to perform data validation
-#'
-#' @return List containing processed data frames
-#' @export
-process_neon_data <- function(data_dir = "data/raw_data",
+#' @param data_dir Path to raw data directory (e.g., "data/raw_data")
+#' @param site_id  NEON site ID (e.g., "DEJU")
+#' @param config   Optional list with configuration (depth_breaks, etc.)
+#' @param validate Logical; if TRUE, run extra validation checks
+#' @return A list with root_chemistry, root_samples, soil_bulk_density, soil_chemistry, biomass, merged_data
+process_neon_data <- function(data_dir,
                               site_id = "DEJU",
                               config = NULL,
                               validate = TRUE) {
   
-  message(sprintf("Processing NEON data for site: %s", site_id))
+  message(glue::glue("Processing NEON data for site: {site_id}"))
   
-  # Load site configuration if not provided
-  if (is.null(config)) {
-    config <- load_site_config(site_id)
-  }
-  
-  # Define expected file names
+  # --- 1. Expected file names -----------------------------------------------
   expected_files <- c(
-    root_chemistry = "megapit_carbon_nitrogen.csv",
-    root_samples = "megapit_root_samples.csv",
+    root_chemistry    = "megapit_carbon_nitrogen.csv",
+    root_samples      = "megapit_root_samples.csv",
     soil_bulk_density = "soil_bulk_density.csv",
-    soil_chemistry = "soil_chemistry.csv",
-    biomass = "megapit_biomass.csv"
+    soil_chemistry    = "soil_chemistry.csv",
+    biomass           = "megapit_biomass.csv"
   )
   
-  # Check file availability
+  # --- 2. Directory & file checks -------------------------------------------
+  if (!dir.exists(data_dir)) {
+    stop(
+      glue::glue("Could not load data: directory does not exist: {data_dir}"),
+      call. = FALSE
+    )
+  }
+  
   file_paths <- file.path(data_dir, expected_files)
   available_files <- file.exists(file_paths)
+  names(available_files) <- names(expected_files)
   
-  if (!all(available_files[c("root_chemistry", "soil_bulk_density")])) {
-    stop(sprintf("Critical data files missing for site %s", site_id))
-  }
+  critical_files <- c("root_chemistry", "soil_bulk_density")
+  critical_available <- available_files[critical_files]
   
-  # Process each data type
-  processed_data <- list()
-  
-  # Process root chemistry data
-  if (available_files["root_chemistry"]) {
-    message("  Processing root chemistry data...")
-    processed_data$root_chemistry <- process_root_chemistry(
-      file_paths["root_chemistry"],
-      site_id,
-      config,
-      validate
+  if (any(is.na(critical_available)) || !all(critical_available)) {
+    stop(
+      glue::glue(
+        "Could not load data: critical data files missing for site {site_id}.\n",
+        "Expected at: {paste(file_paths[critical_files], collapse = ', ')}"
+      ),
+      call. = FALSE
     )
   }
   
-  # Process soil bulk density data
-  if (available_files["soil_bulk_density"]) {
-    message("  Processing soil bulk density data...")
-    processed_data$soil_bulk_density <- process_soil_bulk_density(
-      file_paths["soil_bulk_density"],
-      site_id,
-      config,
-      validate
+  # Optional: warn but continue if non-critical files missing
+  noncritical_missing <- names(available_files)[!available_files & !names(available_files) %in% critical_files]
+  if (length(noncritical_missing) > 0) {
+    warning(
+      glue::glue("Some non-critical files are missing and will be skipped: {paste(noncritical_missing, collapse = ', ')}"),
+      call. = FALSE
     )
   }
   
-  # Process additional data types if available
-  if (available_files["root_samples"]) {
-    message("  Processing root sample metadata...")
-    processed_data$root_samples <- process_root_samples(
-      file_paths["root_samples"],
-      site_id,
-      config,
-      validate
+  # --- 3. Default config if none provided -----------------------------------
+  if (is.null(config)) {
+    config <- list(
+      depth_breaks = c(0, 10, 30, 60, 100, 200),
+      root_size_classes = list(
+        fine   = "≤4mm",
+        coarse = ">4mm"
+      )
     )
   }
   
-  if (available_files["soil_chemistry"]) {
-    message("  Processing soil chemistry data...")
-    processed_data$soil_chemistry <- process_soil_chemistry(
-      file_paths["soil_chemistry"],
-      site_id,
-      config,
-      validate
+  # --- 4. Process each data type --------------------------------------------
+  root_chemistry <- process_root_chemistry(
+    file.path(data_dir, expected_files["root_chemistry"]),
+    site_id = site_id,
+    config  = config,
+    validate = validate
+  )
+  
+  root_samples <- if (available_files["root_samples"]) {
+    process_root_samples(
+      file.path(data_dir, expected_files["root_samples"]),
+      site_id = site_id,
+      config  = config,
+      validate = validate
     )
+  } else NULL
+  
+  soil_bulk_density <- process_soil_bulk_density(
+    file.path(data_dir, expected_files["soil_bulk_density"]),
+    site_id = site_id,
+    config  = config,
+    validate = validate
+  )
+  
+  soil_chemistry <- if (available_files["soil_chemistry"]) {
+    process_soil_chemistry(
+      file.path(data_dir, expected_files["soil_chemistry"]),
+      site_id = site_id,
+      config  = config,
+      validate = validate
+    )
+  } else NULL
+  
+  biomass <- if (available_files["biomass"]) {
+    process_biomass_data(
+      file.path(data_dir, expected_files["biomass"]),
+      site_id = site_id,
+      config  = config,
+      validate = validate
+    )
+  } else NULL
+  
+  # --- 5. Merge root + soil where possible ----------------------------------
+  merged_data <- NULL
+  if (!is.null(root_chemistry) && !is.null(soil_bulk_density)) {
+    merged_data <- merge_root_soil_data(root_chemistry, soil_bulk_density, site_id, config)
   }
   
-  if (available_files["biomass"]) {
-    message("  Processing biomass data...")
-    processed_data$biomass <- process_biomass_data(
-      file_paths["biomass"],
-      site_id,
-      config,
-      validate
-    )
-  }
-  
-  # Merge datasets if both root and soil data are available
-  if (!is.null(processed_data$root_chemistry) && !is.null(processed_data$soil_bulk_density)) {
-    message("  Merging root and soil datasets...")
-    processed_data$merged_data <- merge_root_soil_data(
-      processed_data$root_chemistry,
-      processed_data$soil_bulk_density,
-      site_id,
-      config
-    )
-  }
-  
-  message(sprintf("✓ Data processing complete for site %s", site_id))
-  return(processed_data)
+  list(
+    root_chemistry    = root_chemistry,
+    root_samples      = root_samples,
+    soil_bulk_density = soil_bulk_density,
+    soil_chemistry    = soil_chemistry,
+    biomass           = biomass,
+    merged_data       = merged_data
+  )
 }
 
 #' Process root chemistry data
@@ -363,6 +365,9 @@ process_root_chemistry <- function(file_path, site_id, config, validate = TRUE) 
     return(NULL)
   }
   
+  # Extract depth information from sample IDs
+  depth_info <- extract_depth_info(site_data$cnSampleID)
+  
   # Standard processing
   processed_data <- site_data %>%
     # Remove samples with missing critical variables or quality issues
@@ -370,13 +375,9 @@ process_root_chemistry <- function(file_path, site_id, config, validate = TRUE) 
            carbonPercent > 0, nitrogenPercent > 0,
            cnPercentQF == "OK", cnIsotopeQF == "OK") %>%
     # Calculate C:N ratio
-    mutate(
-      cn_ratio = carbonPercent / nitrogenPercent,
-      # Extract depth information from sample IDs if available
-      depth_info = extract_depth_info(cnSampleID)
-    ) %>%
+    mutate(cn_ratio = carbonPercent / nitrogenPercent) %>%
     # Join with depth information
-    left_join(depth_info, by = c("cnSampleID" = "sample_id")) %>%
+    left_join(depth_info, by = c("cnSampleID" = "cnSampleID")) %>%
     # Create depth categories based on site configuration
     mutate(
       depth_category = create_depth_categories(depth_cm, config$depth_breaks)
@@ -436,10 +437,10 @@ process_soil_bulk_density <- function(file_path, site_id, config, validate = TRU
   # Standard processing
   processed_data <- site_data %>%
     # Remove samples with missing bulk density
-    filter(!is.na(bulk_density)) %>%
+    filter(!is.na(bulkDensExclCoarseFrag)) %>%
     # Use corrected bulk density (excluding coarse fragments) if available
     mutate(
-      bulk_density_corrected = coalesce(bulkDensExclCoarseFrag, bulk_density)
+      bulk_density = bulkDensExclCoarseFrag
     ) %>%
     # Create depth categories
     mutate(
@@ -447,8 +448,8 @@ process_soil_bulk_density <- function(file_path, site_id, config, validate = TRU
     ) %>%
     # Remove extreme outliers
     filter(
-      abs(bulk_density_corrected - mean(bulk_density_corrected, na.rm = TRUE)) <= 
-        4 * sd(bulk_density_corrected, na.rm = TRUE)
+      abs(bulk_density - mean(bulk_density, na.rm = TRUE)) <= 
+        4 * sd(bulk_density, na.rm = TRUE)
     ) %>%
     # Standardize column names
     select(
@@ -456,8 +457,7 @@ process_soil_bulk_density <- function(file_path, site_id, config, validate = TRU
       depth_cm = bulkDensCenterDepth,
       depth_cm_top = bulkDensTopDepth,
       depth_cm_bottom = bulkDensBottomDepth,
-      bulk_density = bulk_density_corrected,
-      bulk_density_raw = bulk_density,
+      bulk_density,
       depth_category,
       everything()
     )
@@ -496,26 +496,58 @@ merge_root_soil_data <- function(root_data, soil_data, site_id, config) {
   
   message("  Merging root and soil datasets...")
   
-  # Perform spatial merge based on site and approximate depth
-  merged_data <- root_data %>%
-    left_join(
-      soil_data %>% 
-        select(siteID, depth_cm, depth_category, horizonName, bulk_density, everything()),
-      by = "siteID"
-    ) %>%
-    # Filter for approximate depth matches (within 5 cm)
-    filter(
-      abs(depth_cm.x - depth_cm.y) <= 5 | 
-      is.na(depth_cm.x) | is.na(depth_cm.y) |
-      (depth_category.x == depth_category.y & !is.na(depth_category.x))
-    ) %>%
-    # Resolve depth conflicts
+  # Validate input data
+  if (!"depth_cm" %in% names(root_data)) {
+    stop("Root data must contain 'depth_cm' column")
+  }
+  if (!"depth_cm" %in% names(soil_data)) {
+    stop("Soil data must contain 'depth_cm' column")
+  }
+  if (!"bulk_density" %in% names(soil_data)) {
+    stop("Soil data must contain 'bulk_density' column")
+  }
+  
+  # Create a simple merge based on site and approximate depth
+  # First, add depth categories to soil data if not present
+  if (!"depth_category" %in% names(soil_data)) {
+    soil_data <- soil_data %>%
+      mutate(depth_category = create_depth_categories(depth_cm, config$depth_breaks))
+  }
+  
+  # Perform a simple merge by finding closest depth matches
+  # Create a lookup table for soil data
+  soil_lookup <- soil_data %>%
+    select(depth_cm, bulk_density, depth_category, horizonName) %>%
+    distinct()
+  
+  # Find closest matches for each root sample
+  merge_info <- root_data %>%
+    select(cnSampleID, depth_cm) %>%
+    distinct() %>%
+    rowwise() %>%
     mutate(
-      depth_cm = coalesce(depth_cm.x, depth_cm.y),
-      depth_category = coalesce(depth_category.x, depth_category.y)
+      closest_soil_idx = which.min(abs(soil_lookup$depth_cm - depth_cm)),
+      bulk_density = soil_lookup$bulk_density[closest_soil_idx],
+      soil_depth_cm = soil_lookup$depth_cm[closest_soil_idx],
+      soil_depth_category = soil_lookup$depth_category[closest_soil_idx],
+      soil_horizon = soil_lookup$horizonName[closest_soil_idx]
     ) %>%
-    # Remove duplicate columns
-    select(-ends_with(".x"), -ends_with(".y"), -starts_with("depth_cm."), -starts_with("depth_category."))
+    ungroup() %>%
+    filter(!is.na(bulk_density))
+  
+  # Merge the soil data back to root data
+  merged_data <- root_data %>%
+    left_join(merge_info, by = c("cnSampleID", "depth_cm")) %>%
+    filter(!is.na(bulk_density)) %>%
+    select(
+      # Root chemistry data
+      cnSampleID, siteID, domainID, plotID,
+      carbonPercent, nitrogenPercent, cn_ratio,
+      depth_cm, depth_category, sizeCategory, root_status,
+      # Soil data
+      bulk_density, soil_depth_cm = soil_depth_cm, 
+      soil_depth_category = soil_depth_category, soil_horizon = soil_horizon
+    )
   
   # Handle missing matches
   n_merged <- nrow(merged_data)
@@ -547,9 +579,18 @@ process_root_samples <- function(file_path, site_id, config, validate = TRUE) {
   
   raw_data <- readr::read_csv(file_path, show_col_types = FALSE)
   
-  # Filter for current site
-  site_data <- raw_data %>%
-    filter(siteID == site_id)
+  # Check if siteID column exists, otherwise use pitNamedLocation
+  if ("siteID" %in% names(raw_data)) {
+    site_data <- raw_data %>%
+      filter(siteID == site_id)
+  } else if ("pitNamedLocation" %in% names(raw_data)) {
+    # Extract site from pitNamedLocation (format: "D19_DEJU_PIT1")
+    site_data <- raw_data %>%
+      filter(grepl(paste0("^", site_id, "_"), pitNamedLocation))
+  } else {
+    warning("No site identification column found in root samples file")
+    return(NULL)
+  }
   
   if (nrow(site_data) == 0) {
     warning(sprintf("No data found for site %s in root samples file", site_id))
@@ -560,9 +601,15 @@ process_root_samples <- function(file_path, site_id, config, validate = TRUE) {
   processed_data <- site_data %>%
     # Remove samples with missing sample IDs
     filter(!is.na(sampleID)) %>%
+    # Add siteID if not present
+    mutate(
+      siteID = if ("siteID" %in% names(.)) siteID else site_id,
+      domainID = if ("domainID" %in% names(.)) domainID else substr(pitNamedLocation, 1, 3),
+      pitID = if ("pitID" %in% names(.)) pitID else substr(pitNamedLocation, 5, nchar(pitNamedLocation))
+    ) %>%
     # Standardize column names
     select(
-      siteID, domainID, pitID, horizonName,
+      siteID, domainID, pitID = pitID, horizonName = horizonName,
       sampleID,
       sizeCategory,
       rootStatus,
@@ -588,6 +635,15 @@ process_soil_chemistry <- function(file_path, site_id, config, validate = TRUE) 
   
   raw_data <- readr::read_csv(file_path, show_col_types = FALSE)
   
+  # Check if required chemistry columns exist
+  required_cols <- c("pH", "organicC", "totalN")
+  available_chem_cols <- intersect(required_cols, names(raw_data))
+  
+  if (length(available_chem_cols) == 0) {
+    warning(sprintf("No chemistry data columns found in soil chemistry file for site %s", site_id))
+    return(NULL)
+  }
+  
   # Filter for current site
   site_data <- raw_data %>%
     filter(siteID == site_id)
@@ -597,15 +653,18 @@ process_soil_chemistry <- function(file_path, site_id, config, validate = TRUE) 
     return(NULL)
   }
   
-  # Standard processing
-  processed_data <- site_data %>%
-    # Remove samples with missing critical variables
-    filter(!is.na(pH), !is.na(organicC)) %>%
-    # Standardize column names
+  # Standard processing - only filter on available columns
+  processed_data <- site_data
+  if (length(available_chem_cols) > 0) {
+    processed_data <- processed_data %>%
+      filter(across(all_of(available_chem_cols), ~ !is.na(.)))
+  }
+  
+  # Standardize column names
+  processed_data <- processed_data %>%
     select(
       siteID, domainID, pitID, horizonName,
-      depth_cm = soilChemCenterDepth,
-      pH, organicC, totalN,
+      depth_cm = horizonTopDepth,
       everything()
     )
   
@@ -628,12 +687,24 @@ process_biomass_data <- function(file_path, site_id, config, validate = TRUE) {
   
   raw_data <- readr::read_csv(file_path, show_col_types = FALSE)
   
+  # Check if required columns exist
+  if (!"siteID" %in% names(raw_data)) {
+    warning(sprintf("No siteID column found in biomass file for site %s", site_id))
+    return(NULL)
+  }
+  
   # Filter for current site
   site_data <- raw_data %>%
     filter(siteID == site_id)
   
   if (nrow(site_data) == 0) {
     warning(sprintf("No data found for site %s in biomass file", site_id))
+    return(NULL)
+  }
+  
+  # Check if biomass column exists
+  if (!"biomass" %in% names(site_data)) {
+    warning(sprintf("No biomass column found in biomass file for site %s", site_id))
     return(NULL)
   }
   
@@ -653,73 +724,76 @@ process_biomass_data <- function(file_path, site_id, config, validate = TRUE) {
   return(processed_data)
 }
 
-#' Extract depth information from NEON sample IDs
+#' Extract depth and size info from NEON cnSampleID
 #'
-#' Parses depth information from NEON sample ID format.
-#'
-#' @param sample_ids Character vector of NEON sample IDs
-#' @return Data frame with depth information
-#' @export
+#' @param sample_ids Character vector of cnSampleID values (e.g., "DEJU.1.20.LIVE.<4MM")
+#' @return tibble with columns: cnSampleID, depth_category, root_status, size_class, depth_cm
 extract_depth_info <- function(sample_ids) {
-  
-  if (length(sample_ids) == 0) {
-    return(tibble(sample_id = character(), depth_cm = numeric()))
+  if (!is.character(sample_ids)) {
+    stop("sample_ids must be a character vector", call. = FALSE)
   }
-  
-  # Extract depth from sample ID format: SITE.X.XX.STATUS.SIZE
-  depth_info <- tibble(sample_id = sample_ids) %>%
-    mutate(
-      # Split by dots and extract depth component
-      parts = stringr::str_split(sample_id, "\\."),
-      depth_part = purrr::map_chr(parts, ~ .x[3] %||% NA_character_)
-    ) %>%
-    # Convert depth part to numeric depth in cm
-    mutate(
-      depth_cm = case_when(
-        !is.na(depth_part) & nchar(depth_part) >= 2 ~ as.numeric(stringr::str_sub(depth_part, 1, 2)),
-        !is.na(depth_part) & nchar(depth_part) == 1 ~ as.numeric(depth_part) * 10,
-        TRUE ~ NA_real_
-      ),
-      depth_cm = ifelse(depth_cm > 0, depth_cm, NA_real_)
-    ) %>%
-    select(sample_id, depth_cm)
-  
-  return(depth_info)
+
+  # Split "DEJU.1.20.LIVE.<4MM" into 5 parts
+  parts <- stringr::str_split_fixed(sample_ids, "\\.", 5)
+
+  if (ncol(parts) < 5) {
+    stop("cnSampleID format not recognized. Expected 5 dot-separated fields.", call. = FALSE)
+  }
+
+  site   <- parts[, 1]
+  core   <- parts[, 2]
+  depth  <- parts[, 3]
+  status <- parts[, 4]
+  size   <- parts[, 5]
+
+  depth_category <- paste(core, depth, sep = ".")  # e.g., "1.20", "2.30"
+
+  size_class <- dplyr::case_when(
+    size %in% c("<4MM", "≤4MM") ~ "≤4mm",
+    size %in% c(">4MM")         ~ ">4mm",
+    TRUE                        ~ size
+  )
+
+  depth_cm <- suppressWarnings(as.numeric(depth))
+
+  tibble::tibble(
+    cnSampleID     = sample_ids,
+    depth_category = depth_category,
+    root_status    = status,
+    size_class     = size_class,
+    depth_cm       = depth_cm
+  )
 }
 
-#' Create depth categories based on breaks
+#' Create depth category labels from numeric depths
 #'
-#' Creates categorical depth variables for analysis.
-#'
-#' @param depth_cm Numeric vector of depths in cm
-#' @param depth_breaks Numeric vector of depth interval breaks
+#' @param depths Numeric vector of depths (cm)
+#' @param breaks Numeric vector of breakpoints (default: 0,10,30,60,100,Inf)
+#' @param labels Optional character vector of labels; if NULL, constructed automatically
 #' @return Character vector of depth categories
-#' @export
-create_depth_categories <- function(depth_cm, depth_breaks = c(0, 10, 25, 50, 100, 200)) {
-  
-  if (all(is.na(depth_cm))) {
-    return(rep(NA_character_, length(depth_cm)))
+create_depth_categories <- function(depths,
+                                    breaks = c(0, 10, 30, 60, 100, Inf),
+                                    labels = NULL) {
+  if (!is.numeric(depths)) {
+    stop("depths must be numeric (cm)", call. = FALSE)
   }
-  
-  valid_depths <- depth_cm[!is.na(depth_cm)]
-  
-  if (length(valid_depths) == 0) {
-    return(rep(NA_character_, length(depth_cm)))
+
+  if (is.null(labels)) {
+    # Create labels like "0-10cm", "10-30cm", ..., "100+cm"
+    lower <- head(breaks, -1)
+    upper <- tail(breaks, -1)
+
+    labels <- paste0(lower, "-", upper, "cm")
+    # Make last one "X+cm"
+    labels[length(labels)] <- paste0(lower[length(lower)], "+cm")
   }
-  
-  # Create categories
-  categories <- cut(
-    valid_depths,
-    breaks = depth_breaks,
-    labels = sprintf("Depth_%d-%d", depth_breaks[-length(depth_breaks)], depth_breaks[-1]),
-    include.lowest = TRUE
-  )
-  
-  # Handle NA values
-  result <- rep(NA_character_, length(depth_cm))
-  result[!is.na(depth_cm)] <- categories
-  
-  return(result)
+
+  cut(depths,
+      breaks = breaks,
+      labels = labels,
+      include.lowest = TRUE,
+      right = FALSE) |>
+    as.character()
 }
 
 #' Create root size categories

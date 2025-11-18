@@ -566,6 +566,182 @@ validate_soil_bulk_density <- function(data, site_id) {
   return(validation)
 }
 
+#' Fit simple root-soil models
+#'
+#' @param merged_data Data frame with cn_ratio, carbonPercent, nitrogenPercent,
+#'        depth_cm, bulk_density, etc.
+#' @return List of fitted model objects
+fit_root_soil_models <- function(merged_data) {
+  stopifnot(is.data.frame(merged_data))
+
+  models <- list()
+
+  # C:N vs depth
+  models$cn_vs_depth <- lm(cn_ratio ~ depth_cm, data = merged_data)
+
+  # C:N vs bulk density + depth
+  models$cn_vs_bd_depth <- lm(cn_ratio ~ bulk_density + depth_cm, data = merged_data)
+
+  # Root C vs bulk density
+  models$c_vs_bd <- lm(carbonPercent ~ bulk_density, data = merged_data)
+
+  # Root N vs bulk density
+  models$n_vs_bd <- lm(nitrogenPercent ~ bulk_density, data = merged_data)
+
+  models
+}
+
+#' Generate publication-quality figures
+#'
+#' Creates key ecological plots for root-soil analysis.
+#'
+#' @param data_list List containing processed data frames
+#' @param site_id Character string specifying site ID
+#' @param output_dir Character string specifying output directory
+#' @param width Numeric figure width
+#' @param height Numeric figure height
+#' @param dpi Numeric figure resolution
+#' @return List of figure file paths
+#' @export
+generate_publication_figures <- function(data_list,
+                                         site_id    = "DEJU",
+                                         output_dir = "figures",
+                                         width = 6,
+                                         height = 5,
+                                         dpi = 300) {
+  
+  if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+  
+  figs <- list()
+  
+  # Root C:N vs depth
+  if (!is.null(data_list$root_chemistry)) {
+    figs$root_cn_vs_depth <- file.path(output_dir, "root_cn_vs_depth.png")
+    p1 <- plot_cn_vs_depth(data_list$root_chemistry, site_id)
+    ggplot2::ggsave(
+      figs$root_cn_vs_depth,
+      plot   = p1,
+      width  = width,
+      height = height,
+      dpi    = dpi,
+      bg     = "white"
+    )
+  }
+  
+  # Soil bulk density vs depth
+  if (!is.null(data_list$soil_bulk_density)) {
+    figs$soil_bd_vs_depth <- file.path(output_dir, "soil_bulk_density_vs_depth.png")
+    p2 <- plot_bulk_density_vs_depth(data_list$soil_bulk_density, site_id)
+    ggplot2::ggsave(
+      figs$soil_bd_vs_depth,
+      plot   = p2,
+      width  = width,
+      height = height,
+      dpi    = dpi,
+      bg     = "white"
+    )
+  }
+  
+  # C:N vs bulk density
+  if (!is.null(data_list$merged_data)) {
+    figs$cn_vs_bd <- file.path(output_dir, "cn_ratio_vs_bulk_density.png")
+    p3 <- plot_cn_vs_bulk_density(data_list$merged_data, site_id)
+    ggplot2::ggsave(
+      figs$cn_vs_bd,
+      plot   = p3,
+      width  = width,
+      height = height,
+      dpi    = dpi,
+      bg     = "white"
+    )
+    
+    # Combined depth profiles
+    figs$depth_profiles <- file.path(output_dir, "depth_profiles.png")
+    p4 <- plot_depth_profiles(data_list$root_chemistry, data_list$soil_bulk_density, site_id)
+    ggplot2::ggsave(
+      figs$depth_profiles,
+      plot   = p4,
+      width  = width * 2,
+      height = height,
+      dpi    = dpi,
+      bg     = "white"
+    )
+  }
+  
+  message(sprintf("✓ Generated %d publication-quality figures", length(figs)))
+  figs
+}
+
+#' Plot root C:N vs depth
+#'
+#' @param root_chemistry Data frame containing root chemistry data
+#' @param site_id Character string specifying site ID
+#' @return ggplot object
+#' @export
+plot_cn_vs_depth <- function(root_chemistry, site_id = "DEJU") {
+  ggplot2::ggplot(root_chemistry, ggplot2::aes(x = cn_ratio, y = depth_cm)) +
+    ggplot2::geom_point(alpha = 0.7) +
+    ggplot2::geom_smooth(method = "lm", se = TRUE, color = "black") +
+    ggplot2::scale_y_reverse() +  # depth increases downward
+    ggplot2::labs(
+      title = glue::glue("Root C:N vs depth at {site_id}"),
+      x     = "Root C:N ratio",
+      y     = "Depth (cm)"
+    ) +
+    ggplot2::theme_bw()
+}
+
+#' Plot soil bulk density vs depth
+#'
+#' @param soil_bulk_density Data frame containing soil bulk density data
+#' @param site_id Character string specifying site ID
+#' @return ggplot object
+#' @export
+plot_bulk_density_vs_depth <- function(soil_bulk_density, site_id = "DEJU") {
+  ggplot2::ggplot(soil_bulk_density, ggplot2::aes(x = bulk_density, y = depth_cm)) +
+    ggplot2::geom_point(alpha = 0.7) +
+    ggplot2::geom_line(alpha = 0.5) +
+    ggplot2::scale_y_reverse() +
+    ggplot2::labs(
+      title = glue::glue("Soil bulk density vs depth at {site_id}"),
+      x     = "Bulk density (g cm⁻³)",
+      y     = "Depth (cm)"
+    ) +
+    ggplot2::theme_bw()
+}
+
+#' Plot C:N vs bulk density
+#'
+#' @param merged_data Data frame containing merged root-soil data
+#' @param site_id Character string specifying site ID
+#' @return ggplot object
+#' @export
+plot_cn_vs_bulk_density <- function(merged_data, site_id = "DEJU") {
+  ggplot2::ggplot(merged_data, ggplot2::aes(x = bulk_density, y = cn_ratio)) +
+    ggplot2::geom_point(alpha = 0.7) +
+    ggplot2::geom_smooth(method = "lm", se = TRUE, color = "black") +
+    ggplot2::labs(
+      title = glue::glue("Root C:N vs soil bulk density at {site_id}"),
+      x     = "Bulk density (g cm⁻³)",
+      y     = "Root C:N ratio"
+    ) +
+    ggplot2::theme_bw()
+}
+
+#' Plot combined depth profiles
+#'
+#' @param root_chemistry Data frame containing root chemistry data
+#' @param soil_bulk_density Data frame containing soil bulk density data
+#' @param site_id Character string specifying site ID
+#' @return patchwork object
+#' @export
+plot_depth_profiles <- function(root_chemistry, soil_bulk_density, site_id = "DEJU") {
+  p1 <- plot_cn_vs_depth(root_chemistry, site_id)
+  p2 <- plot_bulk_density_vs_depth(soil_bulk_density, site_id)
+  
+  patchwork::wrap_plots(p1, p2, ncol = 2)
+}
+
 #' Analyze root size classes
 #'
 #' Performs comprehensive statistical analysis comparing root chemistry

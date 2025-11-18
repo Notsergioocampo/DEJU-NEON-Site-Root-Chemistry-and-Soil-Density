@@ -7,150 +7,69 @@
 #' @docType package
 NULL
 
-#' Run complete NEON root-soil analysis pipeline
-#'
-#' Executes the complete analysis workflow for a specified NEON site,
-#' including data processing, statistical modeling, and visualization.
-#'
-#' @param site_id Character string specifying NEON site ID (e.g., "DEJU", "HARV")
-#' @param data_dir Character string specifying data directory
-#' @param output_dir Character string specifying output directory
-#' @param download_data Logical indicating whether to download data
-#' @param run_models Logical indicating whether to run statistical models
-#' @param create_figures Logical indicating whether to create figures
-#' @param render_report Logical indicating whether to render final report
-#' @param overwrite Logical indicating whether to overwrite existing files
-#' @param config List containing site-specific configuration (optional)
-#'
-#' @return List containing all analysis results and outputs
-#' @export
-run_deju_pipeline <- function(site_id = "DEJU",
-                              data_dir = "data/raw_data",
-                              output_dir = "output",
+#' High-level DEJU pipeline
+run_deju_pipeline <- function(site_id       = "DEJU",
+                              data_dir      = "data/raw_data",
+                              output_dir    = "data_processed",
+                              figures_dir   = "figures",
                               download_data = FALSE,
-                              run_models = TRUE,
+                              run_models    = TRUE,
                               create_figures = TRUE,
-                              render_report = TRUE,
-                              overwrite = FALSE,
-                              config = NULL) {
-  
-  message(sprintf("Starting NEON root-soil analysis pipeline for site: %s", site_id))
-  
-  # Record start time
-  start_time <- Sys.time()
-  
-  # Load site configuration
-  if (is.null(config)) {
-    config <- load_site_config(site_id)
-  }
-  
-  # Set up directories
-  setup_directories(data_dir, output_dir)
-  
-  # Step 1: Data processing
-  message("\nStep 1: Processing NEON data...")
-  processed_data <- process_neon_data(
-    data_dir = data_dir,
-    site_id = site_id,
-    config = config,
-    validate = TRUE
-  )
-  
-  # Check if critical data is available
-  if (is.null(processed_data$root_chemistry) || is.null(processed_data$soil_bulk_density)) {
-    stop(sprintf("Insufficient data for analysis at site %s", site_id))
-  }
-  
-  # Step 2: Statistical analysis and modeling
-  analysis_results <- list()
-  
-  if (run_models) {
-    message("\nStep 2: Performing statistical analysis...")
-    
-    # Basic descriptive statistics
-    analysis_results$descriptive_stats <- create_comprehensive_summary(processed_data, site_id)
-    
-    # Root size class comparisons
-    if ("sizeCategory" %in% names(processed_data$root_chemistry)) {
-      message("  Analyzing root size class differences...")
-      analysis_results$size_class_analysis <- analyze_root_size_classes(
-        processed_data$root_chemistry,
-        site_id,
-        config
-      )
-    }
-    
-    # Depth-stratified analysis
-    message("  Performing depth-stratified analysis...")
-    analysis_results$depth_analysis <- analyze_depth_stratified(
-      processed_data$root_chemistry,
-      site_id = site_id,
-      config = config
+                              render_report  = FALSE) {
+
+  if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+  if (!dir.exists(figures_dir)) dir.create(figures_dir, recursive = TRUE)
+
+  message("Step 1: Processing NEON data...")
+  data_list <- tryCatch({
+    process_neon_data(
+      data_dir = data_dir,
+      site_id  = site_id,
+      validate = TRUE
     )
-    
-    # Soil-root relationship models (if merged data available)
-    if (!is.null(processed_data$merged_data)) {
-      message("  Fitting soil-root relationship models...")
-      analysis_results$soil_root_models <- fit_soil_root_models(
-        processed_data$merged_data,
-        site_id = site_id
-      )
-    }
+  }, error = function(e) {
+    message(sprintf("Error during data processing: %s", e$message))
+    message("Attempting to process with validation disabled...")
+    process_neon_data(
+      data_dir = data_dir,
+      site_id  = site_id,
+      validate = FALSE
+    )
+  })
+
+  # Save processed tables
+  if (!is.null(data_list$root_chemistry)) {
+    readr::write_csv(data_list$root_chemistry,
+                     file.path(output_dir, paste0("root_chemistry_", site_id, ".csv")))
   }
-  
-  # Step 3: Visualization
-  figure_paths <- list()
-  
+  if (!is.null(data_list$soil_bulk_density)) {
+    readr::write_csv(data_list$soil_bulk_density,
+                     file.path(output_dir, paste0("soil_bulk_density_", site_id, ".csv")))
+  }
+  if (!is.null(data_list$merged_data)) {
+    readr::write_csv(data_list$merged_data,
+                     file.path(output_dir, paste0("root_soil_merged_", site_id, ".csv")))
+  }
+
+  if (run_models && !is.null(data_list$merged_data)) {
+    message("Step 2: Fitting ecological models...")
+    models <- fit_root_soil_models(data_list$merged_data)
+    saveRDS(models, file.path(output_dir, paste0("models_", site_id, ".rds")))
+  }
+
   if (create_figures) {
-    message("\nStep 3: Creating publication-quality figures...")
-    figure_paths <- create_publication_figures(
-      processed_data,
-      site_id = site_id,
-      output_dir = file.path(output_dir, "figures"),
-      dpi = 300,
-      width = 8,
-      height = 6
+    message("Step 3: Generating figures...")
+    figure_paths <- generate_publication_figures(
+      data_list  = data_list,
+      site_id    = site_id,
+      output_dir = figures_dir
     )
   }
-  
-  # Step 4: Summary tables and reports
-  message("\nStep 4: Generating summary outputs...")
-  
-  # Create summary tables
-  summary_tables <- create_analysis_summary_tables(
-    analysis_results,
-    processed_data,
-    site_id
-  )
-  
-  # Save summary tables
-  save_summary_tables(summary_tables, output_dir)
-  
-  # Step 5: Final report (if Pandoc available)
-  if (render_report) {
-    message("\nStep 5: Rendering final report...")
-    render_analysis_report(site_id, output_dir)
-  }
-  
-  # Record completion time
-  end_time <- Sys.time()
-  duration <- as.numeric(difftime(end_time, start_time, units = "mins"))
-  
-  message(sprintf("\n✓ Analysis pipeline completed successfully in %.1f minutes", duration))
-  
-  # Compile final results
-  final_results <- list(
-    site_id = site_id,
-    config = config,
-    processed_data = processed_data,
-    analysis_results = analysis_results,
-    figure_paths = figure_paths,
-    summary_tables = summary_tables,
-    processing_time = duration,
-    timestamp = end_time
-  )
-  
-  return(final_results)
+
+  invisible(list(
+    data   = data_list,
+    models = if (run_models) models else NULL
+  ))
 }
 
 #' Load processed data for a specific site

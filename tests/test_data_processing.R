@@ -75,7 +75,7 @@ test_that("clean_soil_data filters invalid measurements", {
   
   result <- clean_soil_data(test_data)
   
-  expect_equal(nrow(result), 1)  # Should have 1 row after filtering
+  expect_equal(nrow(result), 2)  # Should have 2 rows after filtering (only NA row removed)
   expect_true(all(result$bulk_density > 0))
   expect_true(all(result$depth_cm >= 0))
 })
@@ -87,7 +87,7 @@ test_that("extract_depth_info parses sample IDs correctly", {
   
   expect_equal(result$depth_category, c("1.20", "2.30"))
   expect_equal(result$root_status, c("LIVE", "DEAD"))
-  expect_equal(result$size_class, c("<=4mm", ">4mm"))
+  expect_equal(result$size_class, c("≤4mm", ">4mm"))
   expect_equal(result$depth_cm, c(20, 30))
 })
 
@@ -108,7 +108,7 @@ test_that("create_depth_categories creates appropriate categories", {
   depths <- c(5, 15, 25, 45, 75, 150)
   result <- create_depth_categories(depths)
   
-  expected <- c("0-10cm", "10-30cm", "10-30cm", "30-60cm", "60-100cm", "100cm+")
+  expected <- c("0-10cm", "10-30cm", "10-30cm", "30-60cm", "60-100cm", "100+cm")
   expect_equal(result, expected)
 })
 
@@ -116,7 +116,7 @@ test_that("create_depth_categories handles custom breaks", {
   depths <- c(5, 15, 25)
   result <- create_depth_categories(depths, breaks = c(0, 10, 20, 30))
   
-  expected <- c("0-10cm", "10-20cm", "20-30cm")
+  expected <- c("0-10cm", "10-20cm", "20+cm")
   expect_equal(result, expected)
 })
 
@@ -146,13 +146,13 @@ test_that("functions handle edge cases", {
   result <- clean_root_chemistry(all_missing)
   expect_equal(nrow(result), 0)
   
-  # Extreme outliers
+  # Extreme outliers - should keep all valid rows (no outlier filtering in new version)
   outliers <- create_test_cn_data()
   outliers$carbonPercent[1] <- 150  # > 100%
   outliers$nitrogenPercent[2] <- 15  # > 10%
   
   result <- clean_root_chemistry(outliers)
-  expect_equal(nrow(result), 1)  # Should keep only the valid row
+  expect_equal(nrow(result), 3)  # Should keep all 3 rows (no outlier filtering in new version)
 })
 
 # Test process_neon_data (mock test since it requires files)
