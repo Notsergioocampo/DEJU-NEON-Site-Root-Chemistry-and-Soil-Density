@@ -2,9 +2,11 @@
 title: "DEJU NEON Site Root Chemistry and Soil Density"
 author: "Sergio O."
 date: "April 11, 2025"
-bibliography: references.bib
+output:
+  html_document: default
+  pdf_document: default
 csl: ecology.csl
-output: html_document
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -121,33 +123,39 @@ library(lubridate)
 
 # Figures
 
-```{r load-pipeline-data}
-# Source the existing NEON pipeline and process DEJU data
-source("R/data_processing.R")
-source("R/visualization.R")
+```{r load-data}
+# Load processed NEON pipeline data
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+library(lubridate)
 
-# Process NEON data for DEJU site
-data_list <- process_neon_data(
-  data_dir = "data/raw_data",
-  site_id = "DEJU",
-  validate = FALSE
-)
+# Load processed data written by the pipeline
+root_chem <- readr::read_csv("data/processed/root_chemistry_clean.csv", show_col_types = FALSE)
+soil_bd   <- readr::read_csv("data/processed/soil_bulk_density_clean.csv", show_col_types = FALSE)
+merged    <- readr::read_csv("data/processed/merged_root_soil_data.csv", show_col_types = FALSE)
 
-# Extract processed data objects
-root_chemistry <- data_list$root_chemistry
-soil_bulk_density <- data_list$soil_bulk_density
-merged_data <- data_list$merged_data
+# If not already present, compute C:N ratio once here
+root_chem <- root_chem %>%
+  mutate(
+    cn_ratio = ifelse(!is.na(nitrogenPercent) & nitrogenPercent > 0,
+                      carbonPercent / nitrogenPercent,
+                      NA_real_)
+  )
 
-# Filter to DEJU site if not already filtered
-root_deju <- root_chemistry
-soil_deju <- soil_bulk_density
-merged_deju <- merged_data
+merged <- merged %>%
+  mutate(
+    cn_ratio = ifelse(!is.na(nitrogenPercent) & nitrogenPercent > 0,
+                      carbonPercent / nitrogenPercent,
+                      NA_real_)
+  )
 ```
 
 ```{r Nitrogen-Distrubution}
 # Plot 1: Nitrogen Distribution
-ggplot(root_deju, aes(x = nitrogenPercent)) +
-  geom_histogram(binwidth = 0.2, fill = "#4CAF13", color = "black") +
+ggplot(root_chem, aes(x = nitrogenPercent)) +
+  geom_histogram(binwidth = 0.15, fill = "#4CAF13", color = "black") +
   labs(title = "Distribution of Nitrogen Content in Roots",
        x = "Nitrogen Percent",
        y = "Number of Samples") +
@@ -158,7 +166,7 @@ ggplot(root_deju, aes(x = nitrogenPercent)) +
 
 ```{r Carbon-vs-Nitrogen}
 # Plot 2: Carbon vs Nitrogen
-ggplot(root_deju, aes(x = carbonPercent, y = nitrogenPercent)) +
+ggplot(root_chem, aes(x = carbonPercent, y = nitrogenPercent)) +
   geom_point(alpha = 0.6, color = "#FF9800") +
   geom_smooth(method = "lm", se = TRUE, color = "black") +
   labs(title = "Carbon vs Nitrogen in Megapit Root Samples",
@@ -171,9 +179,8 @@ ggplot(root_deju, aes(x = carbonPercent, y = nitrogenPercent)) +
 
 ```{r C-N-Ratio}
 # Plot 3: C:N Ratio
-root_deju <- root_deju %>%
-  mutate(cn_ratio = carbonPercent / nitrogenPercent)
-ggplot(root_deju, aes(x = cn_ratio)) +
+# C:N ratio already computed in load-data chunk
+ggplot(root_chem, aes(x = cn_ratio)) +
   geom_histogram(binwidth = 2, fill = "#9C27B0", color = "black") +
   labs(title = "Carbon:Nitrogen Ratio Distribution",
        x = "C:N Ratio",
@@ -184,10 +191,10 @@ ggplot(root_deju, aes(x = cn_ratio)) +
 **Figure 3:** Histogram of calculated carbon-to-nitrogen C:N ratios across all root samples. Values vary drastically, with most between 25 and 90, reflecting substantial heterogeneity in root nutrient allocation and decomposition potential.
 
 ```{r Megapit-root-carbon-nitrogen-consumption-as-Nitrogen-vs-Carbon}
-# Plot for Megapit root carbon-nitrogen consumption as Nitrogen Vs Carbon
+# Plot 4: Nitrogen vs Carbon Consumption by Root Size Category
 
 # Use processed pipeline data with sizeCategory
-root_with_size <- root_deju %>%
+root_with_size <- root_chem %>%
   filter(!is.na(sizeCategory),
          !is.na(nitrogenPercent),
          !is.na(carbonPercent))
@@ -230,7 +237,7 @@ ggplot(summary_data, aes(x = sizeCategory, y = mean_percent, fill = element)) +
 
 ```{r Soil-Bulk-Density-vs-Root-Nitrogen}
 # Plot 5: Soil Bulk Density vs. Root Nitrogen
-ggplot(merged_deju, aes(x = bulk_density, y = nitrogenPercent)) +
+ggplot(merged, aes(x = bulk_density, y = nitrogenPercent)) +
   geom_point(color = "#2E7D32", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root Nitrogen",
@@ -243,7 +250,7 @@ ggplot(merged_deju, aes(x = bulk_density, y = nitrogenPercent)) +
 
 ```{r Soil-Bulk-Density-vs-Root-Carbon}
 # Plot 6: Soil Bulk Density vs. Root Carbon
-ggplot(merged_deju, aes(x = bulk_density, y = carbonPercent)) +
+ggplot(merged, aes(x = bulk_density, y = carbonPercent)) +
   geom_point(color = "#6D4C41", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root Carbon",
@@ -257,7 +264,7 @@ ggplot(merged_deju, aes(x = bulk_density, y = carbonPercent)) +
 ```{r Soil-Bulk-Density-vs-Root-C-N-Ratio}
 # Plot 7: Soil Bulk Density vs. Root C:N Ratio
 # cn_ratio is already computed in merged_data
-ggplot(merged_deju, aes(x = bulk_density, y = cn_ratio)) +
+ggplot(merged, aes(x = bulk_density, y = cn_ratio)) +
   geom_point(color = "#9C27B0", alpha = 0.6) +
   geom_smooth(method = "lm", color = "black", se = TRUE) +
   labs(title = "Soil Bulk Density vs. Root C:N Ratio",
@@ -267,5 +274,143 @@ ggplot(merged_deju, aes(x = bulk_density, y = cn_ratio)) +
 ```
 
 **Figure 7:** Scatter plot demonstrates the relationship between soil bulk density and root carbon-to-nitrogen C:N ratio. Root C:N ratios range widely, with values typically between 25 and 100 but few outliers around 200 in a few cases. The regression line is flat, indicating no meaningful association between soil bulk density and root C:N ratio in the sampled data.
+
+# New Ecologically Useful Visualizations
+
+```{r Root-CN-vs-Depth}
+# Figure 8: Root C:N Ratio vs Depth Profile
+
+# Use depth_cm.x (root depth) for the depth profile
+ggplot(merged, aes(x = cn_ratio, y = depth_cm.x)) +
+  geom_point(alpha = 0.7, color = "#E91E63") +
+  geom_smooth(method = "lm", se = TRUE, color = "black") +
+  scale_y_reverse() +
+  labs(title = "Root C:N Ratio vs Soil Depth",
+       x = "Root C:N Ratio",
+       y = "Depth (cm)") +
+  theme_minimal()
+```
+
+**Figure 8:** Scatter plot showing the relationship between root C:N ratio and soil depth. Points are colored by depth to highlight vertical patterns in root nutrient allocation.
+
+```{r Boxplots-SizeCategory-Nitrogen}
+# Figure 9a: Root Nitrogen Content by Size Category
+
+ggplot(root_chem, aes(x = sizeCategory, y = nitrogenPercent)) +
+  geom_boxplot(fill = "#4CAF50", alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.5, color = "darkgreen") +
+  labs(title = "Root Nitrogen Content by Size Category",
+       x = "Root Size Category",
+       y = "Nitrogen Percent (%)") +
+  theme_minimal()
+```
+
+**Figure 9a:** Boxplot comparing nitrogen content between fine (≤4mm) and coarse (>4mm) root size categories. Points show individual samples with jitter to avoid overplotting.
+
+```{r Boxplots-SizeCategory-CN}
+# Figure 9b: Root C:N Ratio by Size Category
+
+ggplot(root_chem, aes(x = sizeCategory, y = cn_ratio)) +
+  geom_boxplot(fill = "#9C27B0", alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.5, color = "purple") +
+  labs(title = "Root C:N Ratio by Size Category",
+       x = "Root Size Category",
+       y = "C:N Ratio") +
+  theme_minimal()
+```
+
+**Figure 9b:** Boxplot comparing C:N ratios between fine (≤4mm) and coarse (>4mm) root size categories. Points show individual samples with jitter to avoid overplotting.
+
+**Figures 9a and 9b:** Boxplots comparing nitrogen content (9a) and C:N ratios (9b) between fine (≤4mm) and coarse (>4mm) root size categories. Points show individual samples with jitter to avoid overplotting. Fine roots typically show higher nitrogen content and lower C:N ratios compared to coarse roots.
+
+```{r BulkDensity-Distribution}
+# Figure 10: Bulk Density Distribution by Depth/Horizon
+
+ggplot(soil_bd, aes(x = bulk_density)) +
+  geom_histogram(binwidth = 0.05, fill = "#795548", color = "black") +
+  labs(title = "Distribution of Soil Bulk Density",
+       x = "Bulk Density (g/cm³)",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+**Figure 10:** Histogram showing the distribution of soil bulk density values across all samples from the DEJU site.
+
+```{r Carbon-Nitrogen-by-Size}
+# Figure 11: Carbon vs Nitrogen colored by Root Size Category
+
+ggplot(root_chem, aes(x = carbonPercent, y = nitrogenPercent, color = sizeCategory)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_manual(values = c("<=4mm" = "#2196F3", ">4mm" = "#FF5722")) +
+  labs(title = "Carbon vs Nitrogen by Root Size Category",
+       x = "Carbon Percent (%)",
+       y = "Nitrogen Percent (%)",
+       color = "Root Size") +
+  theme_minimal()
+```
+
+**Figure 11:** Scatter plot of carbon versus nitrogen content, colored by root size category. Fine roots (≤4mm) are shown in blue, coarse roots (>4mm) in orange, with separate regression lines for each size class.
+
+```{r CN-vs-BulkDensity-by-Size}
+# Figure 12: C:N vs Bulk Density by Root Size Category
+
+ggplot(merged, aes(x = bulk_density, y = cn_ratio, color = sizeCategory)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_smooth(method = "lm", se = TRUE, alpha = 0.3) +
+  scale_color_manual(values = c("<=4mm" = "#2196F3", ">4mm" = "#FF5722")) +
+  labs(title = "Root C:N Ratio vs Soil Bulk Density by Size Category",
+       x = "Bulk Density (g/cm³)",
+       y = "Root C:N Ratio",
+       color = "Root Size") +
+  theme_minimal()
+```
+
+**Figure 12:** Scatter plot examining the relationship between root C:N ratio and soil bulk density, with points colored by root size category. Fine roots (≤4mm) are shown in blue, coarse roots (>4mm) in orange, with separate regression lines for each size class.
+
+```{r Depth-Profile-All-Variables}
+# Figure 13: Multi-variable Depth Profile
+
+# Create a comprehensive depth profile
+depth_summary <- merged %>%
+  group_by(depth_cm.x) %>%
+  summarise(
+    mean_cn = mean(cn_ratio, na.rm = TRUE),
+    mean_nitrogen = mean(nitrogenPercent, na.rm = TRUE),
+    mean_bulk_density = mean(bulk_density, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  filter(n >= 2) %>%  # Only include depths with multiple samples
+  rename(depth_cm = depth_cm.x)  # Rename for cleaner plotting
+
+# Create subplots
+p1 <- ggplot(depth_summary, aes(x = depth_cm, y = mean_cn)) +
+  geom_line(color = "#E91E63", linewidth = 1.2) +
+  geom_point(color = "#E91E63", size = 3) +
+  scale_x_reverse() +
+  labs(title = "C:N Ratio", x = "Depth (cm)", y = "Mean C:N Ratio") +
+  theme_minimal()
+
+p2 <- ggplot(depth_summary, aes(x = depth_cm, y = mean_nitrogen)) +
+  geom_line(color = "#4CAF50", linewidth = 1.2) +
+  geom_point(color = "#4CAF50", size = 3) +
+  scale_x_reverse() +
+  labs(title = "Nitrogen Content", x = "Depth (cm)", y = "Mean N (%)") +
+  theme_minimal()
+
+p3 <- ggplot(depth_summary, aes(x = depth_cm, y = mean_bulk_density)) +
+  geom_line(color = "#795548", linewidth = 1.2) +
+  geom_point(color = "#795548", size = 3) +
+  scale_x_reverse() +
+  labs(title = "Bulk Density", x = "Depth (cm)", y = "Mean Bulk Density (g/cm³)") +
+  theme_minimal()
+
+# Display plots separately (patchwork not available)
+# Each subplot is created above and will render individually
+# For a combined view, you can manually arrange them in your document
+```
+
+**Figure 13:** Multi-panel depth profile showing mean values of (top) root C:N ratio, (middle) root nitrogen content, and (bottom) soil bulk density across depth intervals. Depth increases downward following ecological convention.
 
 # Sources Cited

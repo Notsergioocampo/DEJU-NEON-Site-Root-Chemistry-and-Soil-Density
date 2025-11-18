@@ -2,9 +2,9 @@
 
 Reproducible analysis of root chemistry and soil bulk density at the NEON DEJU megapit.
 
-This repository implements a small, reusable workflow for exploring how **root carbon and nitrogen** relate to **soil physical properties** (especially bulk density) along the soil profile at the NEON DEJU site.
+This repository implements a small, reusable workflow for exploring how root carbon and nitrogen relate to soil physical properties (especially bulk density) along the soil profile at the NEON DEJU site.
 
-## ✨ What this project does
+## What this project does
 
 - Cleans and merges NEON megapit datasets:
   - Root chemistry (`megapit_carbon_nitrogen`)
@@ -19,7 +19,7 @@ This repository implements a small, reusable workflow for exploring how **root c
   - Summary tables ecologists can drop into a manuscript or report
   - A simple, reusable pipeline other NEON users can adapt to their own sites
 
-## 📁 Project structure
+## Project structure
 
 ```text
 DEJU-NEON-Site-Root-Chemistry-and-Soil-Density/
@@ -69,7 +69,7 @@ DEJU-NEON-Site-Root-Chemistry-and-Soil-Density/
     └─ test_analysis.R
 ```
 
-## 🔧 Installation
+## Installation
 
 This project assumes:
 
@@ -94,7 +94,7 @@ cd DEJU-NEON-Site-Root-Chemistry-and-Soil-Density
 
 Place your NEON megapit CSVs into `data_raw/` (or use the supplied example files).
 
-## ▶️ How to run the full workflow
+## How to run the full workflow
 
 From the project root:
 
@@ -109,7 +109,7 @@ This will:
 3. Fit simple ecological models (optional)
 4. Generate figures in `figures/`
 
-## 📊 Outputs
+## Outputs
 
 Key figures:
 
@@ -133,7 +133,7 @@ Key tables:
 
 The vignette (`vignettes/neon_root_soil_analysis.Rmd`) walks through a short example analysis using these outputs.
 
-## 🔁 Adapting to another NEON site
+## Adapting to another NEON site
 
 To reuse this framework for another site:
 
@@ -148,7 +148,7 @@ To reuse this framework for another site:
 
 Most of the logic (depth parsing, C:N calculation, depth classes, merging with soil bulk density) should work unchanged, as long as the sample ID patterns and NEON product formats are similar.
 
-## 🧪 Tests
+## Tests
 
 Basic tests are provided in `tests/` using `testthat`. To run them:
 
@@ -163,16 +163,16 @@ These tests focus on:
 * Creating depth categories
 * Cleaning and merging data without silently dropping valid observations
 
-## 🧑‍🔬 Author & context
+## Author & context
 
 This project was built as part of an ecological data science exercise using NEON data at the DEJU site, with an emphasis on **open, reproducible workflows** that other researchers can adapt.
 
 Contributions, suggestions, and pull requests from the NEON and soil/root ecology community are welcome.
 
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details.
 
-## 📮 Contact
+## Contact
 
-For questions or issues, please open an issue on GitHub.
+For questions or issues, please contact: socampo3@dons.usfca.edu
